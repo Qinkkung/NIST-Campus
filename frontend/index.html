@@ -1,13 +1,138 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusPass - NIST Token</title>
+    
+    <!-- ดึง Tailwind CSS มาใช้โดยตรง (ไม่ต้องติดตั้ง) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- ดึง Font Awesome มาใช้ทำไอคอนสวยๆ -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- เขียน CSS เพิ่มเติมนิดหน่อยสำหรับเอฟเฟกต์กระจก (Glassmorphism) -->
+    <style>
+        body {
+            background: radial-gradient(circle at top right, #e0e7ff, #ffffff, #eef2ff);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="text-slate-800 font-sans p-4 md:p-8">
+    <div class="max-w-3xl mx-auto space-y-8">
+        
+        <!-- Navbar -->
+        <nav class="flex justify-between items-center py-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-br from-blue-600 to-indigo-600 p-2.5 rounded-xl shadow-lg">
+                    <i class="fas fa-graduation-cap text-white text-xl"></i>
+                </div>
+                <span class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-700">
+                    CampusPass
+                </span>
+            </div>
+            
+            <button onclick="connectWallet()" class="glass-card flex items-center gap-2 px-5 py-2.5 hover:bg-white text-slate-700 font-semibold rounded-2xl transition-all">
+                <i class="fas fa-wallet text-indigo-600"></i>
+                <span id="wallet-text">Connect Wallet</span>
+            </button>
+        </nav>
+
+        <!-- Dashboard Card -->
+        <section class="glass-card rounded-3xl p-8 relative overflow-hidden">
+            <!-- วงกลมตกแต่งฉากหลัง -->
+            <div class="absolute -right-20 -top-20 w-64 h-64 bg-blue-400/20 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <h1 class="text-2xl font-bold text-slate-800 mb-8">Welcome back, Student 👋</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Balance Widget -->
+                <div class="bg-white/80 p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start gap-4">
+                    <div class="bg-blue-100 p-3 rounded-xl text-blue-600">
+                        <i class="fas fa-coins text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-500 mb-1">NIST Balance</p>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-4xl font-black text-slate-800">200</span>
+                            <span class="text-lg font-bold text-blue-600">NIST</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Trust Score Widget -->
+                <div class="bg-white/80 p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start gap-4">
+                    <div class="bg-emerald-100 p-3 rounded-xl text-emerald-600">
+                        <i class="fas fa-shield-check text-xl"></i>
+                    </div>
+                    <div class="w-full">
+                        <p class="text-sm font-semibold text-slate-500 mb-1">Trust Score</p>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-4xl font-black text-slate-800">82</span>
+                            <span class="text-lg font-medium text-slate-400">/ 100</span>
+                        </div>
+                        <!-- หลอดคะแนน -->
+                        <div class="w-full bg-slate-200 h-2 rounded-full mt-3 overflow-hidden">
+                            <div class="bg-gradient-to-r from-emerald-400 to-emerald-500 w-[82%] h-full rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Resources Section -->
+        <section class="pt-4">
+            <h2 class="text-xl font-bold text-slate-800 mb-6 px-2">Available Resources</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- Room 1 -->
+                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-800">A401 Study Room</h3>
+                            <p class="text-sm text-slate-500 mt-1"><i class="far fa-clock mr-1"></i>Available Now</p>
+                        </div>
+                        <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-sm font-bold border border-indigo-100">
+                            50 NIST
+                        </span>
+                    </div>
+                    <button class="w-full py-3 bg-slate-900 hover:bg-indigo-600 text-white font-semibold rounded-xl transition-colors">
+                        Reserve Resource
+                    </button>
+                </div>
+
+                <!-- Room 2 -->
+                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-800">B203 Classroom</h3>
+                            <p class="text-sm text-slate-500 mt-1"><i class="far fa-clock mr-1"></i>Available Now</p>
+                        </div>
+                        <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-sm font-bold border border-indigo-100">
+                            30 NIST
+                        </span>
+                    </div>
+                    <button class="w-full py-3 bg-slate-900 hover:bg-indigo-600 text-white font-semibold rounded-xl transition-colors">
+                        Reserve Resource
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ส่วนเขียน JavaScript พื้นฐาน -->
+    <script>
+        function connectWallet() {
+            // โค้ดเชื่อมต่อ Ethers.js / Web3 จะมาเขียนตรงนี้
+            document.getElementById('wallet-text').innerText = '0xEC08...58ED';
+        }
+    </script>
+</body>
 </html>

@@ -1,121 +1,131 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Wallet, ShieldCheck, Coins, BookOpen, Clock, ChevronRight } from 'lucide-react'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [walletAddress, setWalletAddress] = useState('')
+
+  const connectWallet = () => {
+    setWalletAddress('0xEC08...58ED')
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    // พื้นหลังไล่ระดับสีแบบล้ำๆ (Mesh Gradient style)
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-100 via-white to-indigo-50 p-4 md:p-8 font-sans text-slate-800">
+      <div className="max-w-3xl mx-auto space-y-8">
+        
+        {/* Navbar */}
+        <nav className="flex justify-between items-center py-4">
+          <div className="flex items-center gap-2">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-xl shadow-lg shadow-blue-200">
+              <BookOpen className="text-white" size={24} />
+            </div>
+            <span className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 tracking-tight">
+              CampusPass
+            </span>
+          </div>
+          
+          <button 
+            onClick={connectWallet}
+            className="group flex items-center gap-2 px-5 py-2.5 bg-white/80 hover:bg-white backdrop-blur-md border border-slate-200/60 text-slate-700 font-semibold rounded-2xl transition-all shadow-sm hover:shadow-md"
+          >
+            <Wallet size={18} className="text-indigo-600 group-hover:scale-110 transition-transform" />
+            {walletAddress ? walletAddress : 'Connect Wallet'}
+          </button>
+        </nav>
 
-      <div className="ticks"></div>
+        {/* Dashboard Card (Glassmorphism) */}
+        <section className="relative overflow-hidden bg-white/60 backdrop-blur-xl rounded-3xl p-8 border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+          {/* วงกลมตกแต่งแบคกราวน์ในการ์ด */}
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <h1 className="text-2xl font-bold text-slate-800 mb-8">
+            Welcome back, Student ✌️
+          </h1>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Balance Widget */}
+            <div className="bg-white/80 p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start gap-4">
+              <div className="bg-blue-100 p-3 rounded-xl text-blue-600">
+                <Coins size={24} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-400 mb-1">NIST Balance</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-black text-slate-800 tracking-tight">200</span>
+                  <span className="text-lg font-bold text-blue-600">NIST</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Trust Score Widget */}
+            <div className="bg-white/80 p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start gap-4">
+              <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600">
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-400 mb-1">Trust Score</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-black text-slate-800 tracking-tight">82</span>
+                  <span className="text-lg font-medium text-slate-400">/ 100</span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
+                  <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 w-[82%] h-full rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {/* Resources Section */}
+        <section className="pt-4">
+          <div className="flex items-center justify-between mb-6 px-2">
+            <h2 className="text-xl font-bold text-slate-800">Available Resources</h2>
+            <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+              View all <ChevronRight size={16} />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Room Card 1 */}
+            <div className="group bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-100/50 transition-all duration-300">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-800">A401 Study Room</h3>
+                  <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
+                    <Clock size={14} /> <span>Available Now</span>
+                  </div>
+                </div>
+                <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-sm font-bold border border-indigo-100">
+                  50 NIST
+                </span>
+              </div>
+              <button className="w-full py-3 bg-slate-900 hover:bg-indigo-600 text-white font-semibold rounded-xl transition-colors duration-300 shadow-md">
+                Reserve Resource
+              </button>
+            </div>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+            {/* Room Card 2 */}
+            <div className="group bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-100/50 transition-all duration-300">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-800">B203 Classroom</h3>
+                  <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
+                    <Clock size={14} /> <span>Available Now</span>
+                  </div>
+                </div>
+                <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-sm font-bold border border-indigo-100">
+                  30 NIST
+                </span>
+              </div>
+              <button className="w-full py-3 bg-slate-900 hover:bg-indigo-600 text-white font-semibold rounded-xl transition-colors duration-300 shadow-md">
+                Reserve Resource
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
   )
 }
 
