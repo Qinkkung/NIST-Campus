@@ -486,9 +486,9 @@
                     const balance = await nistContract.balanceOf(address);
                     const decimals = await nistContract.decimals();
 
-                    // สร้าง/โหลดผู้ใช้ใน Backend ทันทีหลังเชื่อมกระเป๋า
-                    // เพื่อให้ /api/claim พบ wallet นี้ก่อนกดรับ 200 NIST
+                    // โหลดข้อมูลผู้ใช้ (Trust Score / สถานะปฐมนิเทศ)
                     await loadUserData(currentWallet);
+                    // NIST Balance ต้องอ่านจาก ERC-20 ใน MetaMask/Blockchain เท่านั้น
                     const formattedBalance = ethers.utils.formatUnits(balance, decimals);
                     document.getElementById('nist-balance').innerText = parseFloat(formattedBalance).toFixed(0);
 
@@ -566,11 +566,11 @@
                 }
 
                 button.innerHTML = '<i class="fas fa-check mr-1"></i> รับคะแนนแล้ว';
-                message.innerText = '🎉 รับ 20 NIST +5 Trust Score สำเร็จ';
+                message.innerText = '🎉 รับ +5 Trust Score สำเร็จ';
                 await loadUserData(currentWallet);
             } catch (error) {
                 button.disabled = false;
-                button.innerHTML = '<i class="fas fa-gift mr-1"></i> รับ 200 NIST + 5 Trust Score';
+                button.innerHTML = '<i class="fas fa-gift mr-1"></i> รับ 20 NIST + 5 Trust Score';
                 message.innerText = error.message;
             }
         }
@@ -582,9 +582,17 @@
                 
                 // 1. อัปเดตการ์ด Trust Score ด้านบน
                 document.getElementById('trust-score').innerText = data.trust_score;
-                const balanceElement = document.getElementById('nist-balance');
-                if (balanceElement && typeof data.nist_balance === 'number') {
-                    balanceElement.innerText = data.nist_balance.toLocaleString();
+                // NIST Balance ไม่อ่านจาก Backend
+                // ยอดที่แสดงต้องเป็นยอด ERC-20 จริงจาก Blockchain เท่านั้น
+                if (nistContract && currentWallet) {
+                    try {
+                        const chainBalance = await nistContract.balanceOf(currentWallet);
+                        const decimals = await nistContract.decimals();
+                        document.getElementById('nist-balance').innerText =
+                            parseFloat(ethers.utils.formatUnits(chainBalance, decimals)).toFixed(0);
+                    } catch (balanceError) {
+                        console.error("ไม่สามารถอ่าน NIST Balance จาก Blockchain:", balanceError);
+                    }
                 }
                 
                 // 2. อัปเดตตัวเลขในวงกลมประวัติความน่าเชื่อถือด้านล่าง
@@ -602,7 +610,7 @@
                         if (claimMessage) claimMessage.innerText = 'กระเป๋านี้รับรางวัลปฐมนิเทศไปแล้ว';
                     } else {
                         claimButton.disabled = false;
-                        claimButton.innerHTML = '<i class="fas fa-gift mr-1"></i> รับ 200 NIST + 5 Trust Score';
+                        claimButton.innerHTML = '<i class="fas fa-gift mr-1"></i> รับ 20 NIST + 5 Trust Score';
                         if (claimMessage) claimMessage.innerText = '';
                     }
                 }
@@ -712,11 +720,7 @@
 
                 closeModal();
                 
-                // ตัดยอดเหรียญบนหน้า UI ให้เห็นทันที
-                const balanceElement = document.getElementById('nist-balance');
-                if (balanceElement) { 
-                    balanceElement.innerText = parseInt(balanceElement.innerText.replace(/,/g, '')) - 50; 
-                }
+                // โหลด NIST Balance จริงจาก Blockchain หลังชำระเงิน
                 
                 // ส่งข้อมูลไปบันทึกลง Backend
                 await fetch(`${API_URL}/book`, {
@@ -731,6 +735,7 @@
                 });
 
                 await loadBookings(currentWallet);
+                await loadUserData(currentWallet);
                 alert("หัก 50 NIST สำเร็จ! เพิ่มประวัติการจองเรียบร้อย");
                 
                 // รีเซ็ตปุ่มจอง
@@ -799,7 +804,7 @@
 
                 // หมายเหตุ: ตอนนี้ QR ยังเพิ่ม Trust Score จริง แต่ยังไม่ได้ mint/โอน NIST จริง
                 // เพราะต้องมีฟังก์ชัน mint/reward ใน Smart Contract ก่อน
-                alert("🎉 สแกนสำเร็จ!\nเข้าร่วมกิจกรรมปฐมนิเทศเรียบร้อย\n\nได้รับ: +5 Trust Score\n\nNIST +20 จะต้องเชื่อมกับฟังก์ชัน Reward/Mint ของ Smart Contract ก่อน");
+                alert("🎉 สแกนสำเร็จ!\nเข้าร่วมกิจกรรมปฐมนิเทศเรียบร้อย\n\nได้รับ: +5 Trust Score\n\nNIST Balance อ่านจากเหรียญจริงในกระเป๋า");
             }, 3000); 
         }
 
