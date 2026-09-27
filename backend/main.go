@@ -21,6 +21,7 @@ type User struct {
 	TrustScore         int  `json:"trust_score"`
 	OrientationClaimed bool `json:"orientation_claimed"`
 	LastClaimPeriod string `json:"last_claim_period"`
+	NISTBalance int `json:"nist_balance"`
 }
 
 type Booking struct {
@@ -105,7 +106,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ถ้าไม่เจอ ให้สร้าง User ใหม่ (Trust Score เริ่มที่ 80)
-	newUser := User{WalletAddress: wallet, TrustScore: 80}
+	newUser := User{WalletAddress: wallet, TrustScore: 80, NISTBalance: 200}
 	users = append(users, newUser)
 
 	json.NewEncoder(w).Encode(newUser)
@@ -192,79 +193,26 @@ func cancelBookingHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Cancelled successfully and Trust Score updated"})
 }
 
-// แจก 200 NIST + 5 Trust Score ให้กระเป๋าละ 1 ครั้งต่อรอบ 2 เดือน
-func treasuryStatusHandler(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodGet {
-        http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-        return
-    }
-    derived, bnb, nist, err := getTreasuryDiagnostics()
-    if err != nil {
-        log.Printf("❌ Treasury diagnostics failed: %v", err)
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-
-    matches := strings.EqualFold(derived, ReceiverAddress)
-    log.Printf("🔎 Treasury diagnostics | derived=%s | configured=%s | match=%t | tBNB=%s | NIST=%s",
-        derived, ReceiverAddress, matches, formatBNB(bnb), formatNIST(nist))
-
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(map[string]interface{}{
-        "configured_receiver": ReceiverAddress,
-        "derived_treasury": derived,
-        "private_key_matches_receiver": matches,
-        "tbnb_balance": formatBNB(bnb),
-        "nist_balance": formatNIST(nist),
-        "chain_id": BSCChainID,
-    })
-}
-
-func claimNISTHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost { http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed); return }
-	var req map[string]string
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { http.Error(w, err.Error(), http.StatusBadRequest); return }
-	wallet := req["wallet_address"]
-	if !isHexAddress(wallet) { http.Error(w, "wallet_address is invalid", http.StatusBadRequest); return }
-	mutex.Lock(); defer mutex.Unlock()
-	period := currentClaimPeriod()
-	for i := range users {
-		if !strings.EqualFold(users[i].WalletAddress, wallet) { continue }
-		if users[i].LastClaimPeriod == period {
-			w.Header().Set("Content-Type", "application/json"); w.WriteHeader(http.StatusConflict)
-			json.NewEncoder(w).Encode(map[string]interface{}{"message":"Claim already used for this 2-month period", "claimed":true, "period":period}); return
-		}
-		txHash, err := sendNISTTransfer(wallet, ClaimAmountNIST)
-		if err != nil {
-			log.Printf("❌ Claim failed for wallet %s: %v", wallet, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		log.Printf("✅ Claim transaction submitted for wallet %s: %s", wallet, txHash)
-		users[i].LastClaimPeriod = period
-		users[i].TrustScore += 5
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"message":"Claim successful", "amount":ClaimAmountNIST, "new_score":users[i].TrustScore, "tx_hash":txHash, "period":period, "claimed":true}); return
-	}
-	http.Error(w, "User not found", http.StatusNotFound)
-}
-// รับคะแนนปฐมนิเทศได้เพียง 1 ครั้งต่อกระเป๋า (+5 Trust Score)
+// ปฐมนิเทศ: รับ 20 NIST + 5 Trust Score ได้ 1 ครั้งต่อกระเป๋า
 func claimOrientationHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost { http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed); return }
 	var req struct { WalletAddress string `json:"wallet_address"` }
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { http.Error(w, err.Error(), http.StatusBadRequest); return }
-	if req.WalletAddress == "" { http.Error(w, "wallet_address is required", http.StatusBadRequest); return }
+	if !isHexAddress(req.WalletAddress) { http.Error(w, "wallet_address is invalid", http.StatusBadRequest); return }
 	mutex.Lock(); defer mutex.Unlock()
 	for i := range users {
-		if users[i].WalletAddress != req.WalletAddress { continue }
-		if users[i].OrientationClaimed { http.Error(w, "Orientation score already claimed", http.StatusConflict); return }
-		users[i].TrustScore += 5; users[i].OrientationClaimed = true
+		if !strings.EqualFold(users[i].WalletAddress, req.WalletAddress) { continue }
+		if users[i].OrientationClaimed { http.Error(w, "Orientation reward already claimed", http.StatusConflict); return }
+		users[i].TrustScore += 5
+		users[i].NISTBalance += 20
+		users[i].OrientationClaimed = true
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"message":"Orientation score claimed successfully", "new_score":users[i].TrustScore, "orientation_claimed":true})
+		json.NewEncoder(w).Encode(map[string]interface{}{"message":"Orientation reward claimed successfully", "amount":20, "new_balance":users[i].NISTBalance, "new_score":users[i].TrustScore, "orientation_claimed":true})
 		return
 	}
 	http.Error(w, "User not found", http.StatusNotFound)
 }
+
 // ทำกิจกรรมรับคะแนน (เพิ่ม Trust Score 5 คะแนน)
 func earnActivityHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -365,6 +313,7 @@ func main() {
 	http.HandleFunc("/api/book", enableCORS(bookRoomHandler))
 	http.HandleFunc("/api/cancel", enableCORS(cancelBookingHandler))
 	http.HandleFunc("/api/earn", enableCORS(earnActivityHandler))
+	// /api/claim เดิมถูกเลิกใช้: ไม่แจก 200 NIST ผ่าน Treasury แล้ว
 	http.HandleFunc("/api/claim", enableCORS(claimNISTHandler))
 	http.HandleFunc("/api/treasury-status", enableCORS(treasuryStatusHandler))
 	http.HandleFunc("/api/orientation-claim", enableCORS(claimOrientationHandler))
