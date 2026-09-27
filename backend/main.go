@@ -21,7 +21,6 @@ type User struct {
 	TrustScore         int  `json:"trust_score"`
 	OrientationClaimed bool `json:"orientation_claimed"`
 	LastClaimPeriod string `json:"last_claim_period"`
-	NISTBalance int `json:"nist_balance"`
 }
 
 type Booking struct {
@@ -106,7 +105,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ถ้าไม่เจอ ให้สร้าง User ใหม่ (Trust Score เริ่มที่ 80)
-	newUser := User{WalletAddress: wallet, TrustScore: 80, NISTBalance: 200}
+	newUser := User{WalletAddress: wallet, TrustScore: 80}
 	users = append(users, newUser)
 
 	json.NewEncoder(w).Encode(newUser)
@@ -204,10 +203,9 @@ func claimOrientationHandler(w http.ResponseWriter, r *http.Request) {
 		if !strings.EqualFold(users[i].WalletAddress, req.WalletAddress) { continue }
 		if users[i].OrientationClaimed { http.Error(w, "Orientation reward already claimed", http.StatusConflict); return }
 		users[i].TrustScore += 5
-		users[i].NISTBalance += 20
 		users[i].OrientationClaimed = true
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"message":"Orientation reward claimed successfully", "amount":20, "new_balance":users[i].NISTBalance, "new_score":users[i].TrustScore, "orientation_claimed":true})
+		json.NewEncoder(w).Encode(map[string]interface{}{"message":"Orientation reward claimed successfully", "amount":20, "new_score":users[i].TrustScore, "orientation_claimed":true})
 		return
 	}
 	http.Error(w, "User not found", http.StatusNotFound)
