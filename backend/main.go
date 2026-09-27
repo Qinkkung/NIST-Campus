@@ -208,7 +208,12 @@ func claimNISTHandler(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(map[string]interface{}{"message":"Claim already used for this 2-month period", "claimed":true, "period":period}); return
 		}
 		txHash, err := sendNISTTransfer(wallet, ClaimAmountNIST)
-		if err != nil { http.Error(w, err.Error(), http.StatusInternalServerError); return }
+		if err != nil {
+			log.Printf("❌ Claim failed for wallet %s: %v", wallet, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("✅ Claim transaction submitted for wallet %s: %s", wallet, txHash)
 		users[i].LastClaimPeriod = period
 		users[i].TrustScore += 5
 		w.Header().Set("Content-Type", "application/json")
