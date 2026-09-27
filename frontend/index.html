@@ -543,7 +543,7 @@
             button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> กำลังรับคะแนน...';
 
             try {
-                const res = await fetch(`${API_URL}/orientation-claim`, {
+                const res = await fetch(`${API_URL}/claim`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ wallet_address: currentWallet })
@@ -562,11 +562,11 @@
                 }
 
                 button.innerHTML = '<i class="fas fa-check mr-1"></i> รับคะแนนแล้ว';
-                message.innerText = '🎉 รับ +5 Trust Score สำเร็จ';
+                message.innerText = '🎉 รับ 200 NIST +5 Trust Score สำเร็จ';
                 await loadUserData(currentWallet);
             } catch (error) {
                 button.disabled = false;
-                button.innerHTML = '<i class="fas fa-gift mr-1"></i> รับคะแนนปฐมนิเทศ';
+                button.innerHTML = '<i class="fas fa-gift mr-1"></i> รับ 200 NIST + 5 Trust Score';
                 message.innerText = error.message;
             }
         }
