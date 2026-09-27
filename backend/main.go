@@ -4,6 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"context"
+	"math/big"
+	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"net/http"
 	"os"
 	"strconv"
@@ -18,6 +27,7 @@ type User struct {
 	WalletAddress string `json:"wallet_address"`
 	TrustScore         int  `json:"trust_score"`
 	OrientationClaimed bool `json:"orientation_claimed"`
+	LastClaimPeriod string `json:"last_claim_period"`
 }
 
 type Booking struct {
@@ -49,6 +59,48 @@ var users []User
 var bookings []Booking
 var transactions []Transaction
 var mutex sync.Mutex // ใช้ Mutex เพื่อป้องกันปัญหาตอนมีคนเรียก API พร้อมกัน
+const (
+	NISTContractAddress = "0xEC08895F6C21f17b9b4D32b5bE3CcAA79b0E58ED"
+	ReceiverAddress = "0x82F4F791A79f0Dc6a8eE39888c05D0B4E9A093Cb"
+	BSCChainID = int64(97)
+	ClaimAmountNIST = int64(200)
+)
+
+func currentClaimPeriod() string {
+	now := time.Now().UTC()
+	period := (int(now.Month()) - 1) / 2
+	return fmt.Sprintf("%d-%02d", now.Year(), period)
+}
+
+func transferNISTFromReceiver(toWallet string, amountNIST int64) (string, error) {
+	privateKeyHex := strings.TrimSpace(os.Getenv("NIST_TREASURY_PRIVATE_KEY"))
+	if privateKeyHex == "" { return "", fmt.Errorf("ยังไม่ได้ตั้งค่า NIST_TREASURY_PRIVATE_KEY บน Backend") }
+	client, err := ethclient.Dial("https://bsc-testnet-dataseed.bnbchain.org")
+	if err != nil { return "", fmt.Errorf("เชื่อมต่อ BSC Testnet ไม่สำเร็จ: %w", err) }
+	defer client.Close()
+	privateKeyHex = strings.TrimPrefix(privateKeyHex, "0x")
+	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+	if err != nil { return "", fmt.Errorf("NIST_TREASURY_PRIVATE_KEY ไม่ถูกต้อง") }
+	derivedAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+	if !strings.EqualFold(derivedAddress.Hex(), ReceiverAddress) { return "", fmt.Errorf("private key ของ Treasury ไม่ตรงกับ RECEIVER_ADDRESS") }
+	if !common.IsHexAddress(toWallet) { return "", fmt.Errorf("wallet address ไม่ถูกต้อง") }
+	tokenABI, err := abi.JSON(strings.NewReader(`[{"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"name":"recipient","type":"address"},{"name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}]`))
+	if err != nil { return "", fmt.Errorf("สร้าง Token ABI ไม่สำเร็จ: %w", err) }
+	token := bind.NewBoundContract(common.HexToAddress(NISTContractAddress), tokenABI, client, client, client)
+	var outputs []interface{}
+	if err := token.Call(&bind.CallOpts{Context: context.Background()}, &outputs, "decimals"); err != nil { return "", fmt.Errorf("อ่าน decimals ของ NIST ไม่สำเร็จ: %w", err) }
+	decimals := uint8(18)
+	if len(outputs) > 0 { if d, ok := outputs[0].(uint8); ok { decimals = d } }
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(BSCChainID))
+	if err != nil { return "", fmt.Errorf("สร้าง signer ไม่สำเร็จ: %w", err) }
+	auth.Context = context.Background()
+	base := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
+	amount := new(big.Int).Mul(big.NewInt(amountNIST), base)
+	tx, err := token.Transact(auth, "transfer", common.HexToAddress(toWallet), amount)
+	if err != nil { return "", fmt.Errorf("โอน NIST ไม่สำเร็จ: %w", err) }
+	return tx.Hash().Hex(), nil
+}
+
 
 // ==========================================
 // 3. Middleware สำหรับจัดการ CORS (ให้หน้าเว็บ :5500 เรียก API ได้)
@@ -177,6 +229,30 @@ func cancelBookingHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Cancelled successfully and Trust Score updated"})
 }
 
+// แจก 200 NIST + 5 Trust Score ให้กระเป๋าละ 1 ครั้งต่อรอบ 2 เดือน
+func claimNISTHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost { http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed); return }
+	var req map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { http.Error(w, err.Error(), http.StatusBadRequest); return }
+	wallet := req["wallet_address"]
+	if !common.IsHexAddress(wallet) { http.Error(w, "wallet_address is invalid", http.StatusBadRequest); return }
+	mutex.Lock(); defer mutex.Unlock()
+	period := currentClaimPeriod()
+	for i := range users {
+		if !strings.EqualFold(users[i].WalletAddress, wallet) { continue }
+		if users[i].LastClaimPeriod == period {
+			w.Header().Set("Content-Type", "application/json"); w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]interface{}{"message":"Claim already used for this 2-month period", "claimed":true, "period":period}); return
+		}
+		txHash, err := transferNISTFromReceiver(wallet, ClaimAmountNIST)
+		if err != nil { http.Error(w, err.Error(), http.StatusInternalServerError); return }
+		users[i].LastClaimPeriod = period
+		users[i].TrustScore += 5
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"message":"Claim successful", "amount":ClaimAmountNIST, "new_score":users[i].TrustScore, "tx_hash":txHash, "period":period, "claimed":true}); return
+	}
+	http.Error(w, "User not found", http.StatusNotFound)
+}
 // รับคะแนนปฐมนิเทศได้เพียง 1 ครั้งต่อกระเป๋า (+5 Trust Score)
 func claimOrientationHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost { http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed); return }
@@ -294,6 +370,7 @@ func main() {
 	http.HandleFunc("/api/book", enableCORS(bookRoomHandler))
 	http.HandleFunc("/api/cancel", enableCORS(cancelBookingHandler))
 	http.HandleFunc("/api/earn", enableCORS(earnActivityHandler))
+	http.HandleFunc("/api/claim", enableCORS(claimNISTHandler))
 	http.HandleFunc("/api/orientation-claim", enableCORS(claimOrientationHandler))
 	http.HandleFunc("/api/transaction", enableCORS(createTransactionHandler))
 	http.HandleFunc("/api/transactions", enableCORS(getTransactionsHandler))
