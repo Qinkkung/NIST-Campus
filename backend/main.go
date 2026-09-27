@@ -56,14 +56,7 @@ const (
 	NISTContractAddress = "0xEC08895F6C21f17b9b4D32b5bE3CcAA79b0E58ED"
 	ReceiverAddress = "0x82F4F791A79f0Dc6a8eE39888c05D0B4E9A093Cb"
 	BSCChainID = int64(97)
-	ClaimAmountNIST = int64(200)
 )
-
-func currentClaimPeriod() string {
-	now := time.Now().UTC()
-	period := (int(now.Month()) - 1) / 2
-	return fmt.Sprintf("%d-%02d", now.Year(), period)
-}
 
 // ==========================================
 // 3. Middleware สำหรับจัดการ CORS (ให้หน้าเว็บ :5500 เรียก API ได้)
@@ -312,8 +305,6 @@ func main() {
 	http.HandleFunc("/api/cancel", enableCORS(cancelBookingHandler))
 	http.HandleFunc("/api/earn", enableCORS(earnActivityHandler))
 	// /api/claim เดิมถูกเลิกใช้: ไม่แจก 200 NIST ผ่าน Treasury แล้ว
-	http.HandleFunc("/api/claim", enableCORS(claimNISTHandler))
-	http.HandleFunc("/api/treasury-status", enableCORS(treasuryStatusHandler))
 	http.HandleFunc("/api/orientation-claim", enableCORS(claimOrientationHandler))
 	http.HandleFunc("/api/transaction", enableCORS(createTransactionHandler))
 	http.HandleFunc("/api/transactions", enableCORS(getTransactionsHandler))
