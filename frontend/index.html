@@ -3,282 +3,292 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampusPass - NIST Token</title>
+    <title>NIST Campus DApp</title>
     
-    <!-- ฟอนต์ Prompt จาก Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome สำหรับไอคอน -->
+    <!-- Tailwind CSS & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- Tailwind CSS (ผ่าน CDN) พร้อมตั้งค่าสีและฟอนต์ -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ethers.js -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+
+    <!-- Tailwind Config -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Prompt', 'sans-serif'],
-                    },
                     colors: {
-                        navy: '#2d364c',   // กรมท่า
-                        orange: '#ff7800', // ส้ม
-                        purple: '#6534ac', // ม่วง
+                        navy: '#1a2238',
+                        orange: '#ff6a3d',
+                        purple: '#9d4edd',
+                    },
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
-
+    
+    <!-- Google Fonts: Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; }
-        /* ซ่อน Scrollbar แต่ยังเลื่อนได้ */
-        ::-webkit-scrollbar { display: none; }
+        body { font-family: 'Kanit', sans-serif; }
+        
+        /* แอนิเมชันสำหรับเส้นสแกน QR */
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .animate-scan {
+            animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
     </style>
 </head>
-<body class="text-navy font-sans pb-20">
+<body class="bg-slate-50 text-navy pb-20">
 
-    <!-- Navbar -->
-    <nav class="flex justify-between items-center p-6 max-w-4xl mx-auto">
-        <div class="flex items-center gap-3">
-            <i class="fas fa-graduation-cap text-orange text-2xl"></i>
-            <span class="text-2xl font-bold tracking-tight">CampusPass</span>
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-5 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-orange rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-orange/30">N</div>
+                <h1 class="font-bold text-xl tracking-wide">NIST <span class="text-orange">Campus</span></h1>
+            </div>
+            <button id="connect-btn" onclick="connectWallet()" class="bg-navy text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-opacity-90 transition-all shadow-md flex items-center gap-2">
+                <i class="fas fa-wallet"></i> <span>Connect</span>
+            </button>
         </div>
-        <!-- ปุ่ม Connect: มีลูกเล่น hover ให้เงาเด้ง และ active:scale-95 เวลากดจะยุบลงไป -->
-        <button onclick="connectWallet()" id="wallet-btn" class="bg-navy text-white px-5 py-2.5 rounded-full font-medium flex items-center gap-2 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200">
-            <i class="fas fa-wallet text-orange"></i>
-            <span id="wallet-text" class="text-sm">Connect</span>
-        </button>
-    </nav>
+    </header>
 
-    <main class="max-w-4xl mx-auto px-6">
+    <main class="max-w-6xl mx-auto px-5 pt-6">
+
+        <!-- ========================================== -->
+        <!-- Hero / Cover Section -->
+        <!-- ========================================== -->
+        <section class="relative bg-navy rounded-[2rem] overflow-hidden mb-8 h-48 shadow-lg flex items-end p-5">
+            <img src="./src/assets/header.jpg" alt="Students Cover" class="absolute inset-0 w-full h-full object-cover opacity-60">
+            <div class="relative z-10 text-white w-full">
+                <!-- เพิ่ม id="user-greeting" -->
+                <h2 id="user-greeting" class="text-3xl font-bold mb-1">ยินดีต้อนรับ 👋</h2>
+                <!-- เพิ่ม id="user-role" -->
+                <p id="user-role" class="text-sm font-medium opacity-90"><i class="fas fa-user-circle mr-1"></i> Student</p>
+            </div>
+        </section>
         
-        <!-- Hero Section (รูปภาพใหญ่แบบในเรฟเฟอเรนซ์) -->
-        <section class="relative mt-2">
-            <!-- รูปภาพแบคกราวน์ -->
-            <div class="h-64 md:h-80 w-full rounded-[2.5rem] overflow-hidden relative shadow-xl">
-                <img src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Campus" class="w-full h-full object-cover">
-                <!-- ไล่สีดำทับรูปนิดๆ ให้ตัวหนังสือชัด -->
-                <div class="absolute inset-0 bg-gradient-to-t from-navy/80 to-transparent"></div>
-            </div>
-
-            <!-- ข้อความทับบนรูป -->
-            <div class="absolute bottom-16 left-8 text-white">
-                <h1 class="text-3xl md:text-4xl font-bold mb-1">ยินดีต้อนรับ 👋</h1>
-                <p class="text-white/80 font-light flex items-center gap-2">
-                    <i class="fas fa-user-circle"></i> Student
-                </p>
-            </div>
-
-            <!-- Dashboard Stats (ลอยซ้อนทับรูปภาพลงมาครึ่งนึง) -->
-            <div class="absolute -bottom-10 left-6 right-6 flex gap-4">
+        <!-- Dashboard Section -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold mb-4">ยินดีต้อนรับ 👋</h2>
+            
+            <div class="flex gap-4">
                 <!-- NIST Balance -->
-                <div class="flex-1 bg-white p-5 rounded-3xl shadow-xl flex items-center justify-between border-b-4 border-orange hover:-translate-y-1 transition-transform cursor-pointer">
+                <div class="flex-1 bg-white p-5 rounded-3xl shadow-md border-b-4 border-orange hover:-translate-y-1 transition-transform cursor-pointer">
                     <div>
-                    <p class="text-xs text-gray-400 font-bold uppercase mb-1">NIST Balance</p>
-                    <!-- ปรับคลาสบรรทัดนี้ให้เหมือนกัน -->
-                    <div class="text-3xl font-bold text-navy" id="nist-balance">200</div>
-                </div>
-                    <div class="w-12 h-12 rounded-full bg-orange/10 text-orange flex items-center justify-center text-xl">
+                        <p class="text-xs text-gray-400 font-bold uppercase mb-1">NIST Balance</p>
+                        <div class="text-3xl font-bold text-navy" id="nist-balance">0</div>
+                    </div>
+                    <div class="w-10 h-10 bg-orange/10 rounded-full flex items-center justify-center text-orange mt-2">
                         <i class="fas fa-coins"></i>
                     </div>
                 </div>
 
                 <!-- Trust Score -->
-                <div class="flex-1 bg-white p-5 rounded-3xl shadow-xl flex items-center justify-between border-b-4 border-purple hover:-translate-y-1 transition-transform cursor-pointer">
+                <div class="flex-1 bg-white p-5 rounded-3xl shadow-md border-b-4 border-purple hover:-translate-y-1 transition-transform cursor-pointer flex flex-col justify-between">
                     <div>
                         <p class="text-xs text-gray-400 font-bold uppercase mb-1">Trust Score</p>
-                        <!-- ปรับฟอนต์ให้เท่ากัน และใช้ id="trust-score" สำหรับให้ JS หักคะแนน -->
-                        <div class="text-3xl font-bold text-navy" id="trust-score">82</div>
+                        <div class="text-3xl font-bold text-navy" id="trust-score">0</div>
                     </div>
-                    <!-- ไอคอนโล่ -->
-                    <div class="w-10 h-10 bg-purple/10 rounded-full flex items-center justify-center text-purple">
+                    <div class="w-10 h-10 bg-purple/10 rounded-full flex items-center justify-center text-purple mt-2 self-end">
                         <i class="fas fa-shield-alt"></i>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- เว้นระยะให้การ์ดที่ลอยอยู่ -->
-        <div class="h-20"></div>
-
-        <!-- Available Resources Section -->
-        <section class="mt-4">
-            <div class="flex justify-between items-center mb-6">
-                <!-- เปลี่ยนชื่อเป็น ห้องว่าง -->
-                <h2 class="text-xl font-bold"><i class="fas fa-door-open text-orange mr-2"></i>ห้องว่าง</h2>
-                <button class="text-sm text-purple hover:underline font-medium active:scale-95 transition-transform">ดูทั้งหมด</button>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Room Card 1 -->
-                <div class="bg-white rounded-[2rem] p-3 shadow-md hover:shadow-xl transition-all duration-300">
-                    <div class="h-40 w-full rounded-[1.5rem] overflow-hidden relative mb-4">
-                        <img src="https://images.unsplash.com/photo-1568667256549-094345857637?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Library" class="w-full h-full object-cover">
-                        <div class="absolute top-3 left-3 bg-white/90 backdrop-blur text-navy text-xs font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1">
-                            <i class="fas fa-users text-purple"></i> 8
-                        </div>
-                    </div>
-                    <div class="px-3 pb-2">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <!-- ชื่อห้องขึ้นนำ (ตัวใหญ่) -->
-                                <h3 class="font-bold text-xl text-navy">ห้องศึกษาค้นคว้ากลุ่ม 1</h3>
-                                <!-- ชื่อตึก/โซน (ตัวเล็กสีเทา) -->
-                                <p class="text-sm text-gray-500 mt-0.5"><i class="fas fa-building text-orange/70 mr-1"></i>อาคารวิทยบริการ A</p>
-                                <p class="text-xs text-green-500 mt-2 flex items-center gap-1"><i class="fas fa-circle text-[8px]"></i> ว่างให้จอง</p>
-                            </div>
-                            <div class="text-right">
-                                <span class="block text-xl font-bold text-orange">50</span>
-                                <span class="text-[10px] text-gray-400 font-medium -mt-1 block">NIST</span>
-                            </div>
-                        </div>
-                        <button onclick="openModal()" class="w-full bg-navy text-white py-3 rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-navy/90 active:scale-95 transition-all shadow-md">
-                            <i class="fas fa-calendar-check text-orange"></i> จองห้อง
-                        </button>
-                    </div>
+        <!-- Earn NIST Section (กิจกรรมมหาลัย) -->
+        <section class="mt-6 mb-8">
+            <div onclick="openQrScanner()" class="bg-gradient-to-r from-green-400 to-green-600 rounded-3xl p-5 shadow-lg flex items-center justify-between cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden">
+                <div class="absolute -right-5 -top-5 w-24 h-24 bg-white/20 rounded-full blur-xl pointer-events-none"></div>
+                <div class="text-white relative z-10">
+                    <span class="inline-block px-2 py-1 bg-white/20 text-[10px] font-bold rounded-full mb-1 tracking-wide">
+                        <i class="fas fa-star text-yellow-300 mr-1"></i> CAMPUS ACTIVITY
+                    </span>
+                    <h3 class="font-bold text-lg">ปฐมนิเทศนักศึกษา</h3>
+                    <p class="text-sm opacity-90">เช็คอินรับ +20 NIST | +5 Trust Score</p>
                 </div>
-
-                <!-- Room Card 2 -->
-                <div class="bg-white rounded-[2rem] p-3 shadow-md hover:shadow-xl transition-all duration-300">
-                    <div class="h-40 w-full rounded-[1.5rem] overflow-hidden relative mb-4">
-                        <img src="https://images.unsplash.com/photo-1577415124269-fc1140a69e91?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Smart Classroom" class="w-full h-full object-cover">
-                        <div class="absolute top-3 left-3 bg-white/90 backdrop-blur text-navy text-xs font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1">
-                            <i class="fas fa-users text-purple"></i> 15
-                        </div>
-                    </div>
-                    <div class="px-3 pb-2">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <!-- ชื่อห้องขึ้นนำ (ตัวใหญ่) -->
-                                <h3 class="font-bold text-xl text-navy">Smart Classroom</h3>
-                                <!-- ชื่อตึก/โซน (ตัวเล็กสีเทา) -->
-                                <p class="text-sm text-gray-500 mt-0.5"><i class="fas fa-building text-orange/70 mr-1"></i>อาคารวิทยบริการ B</p>
-                                <p class="text-xs text-green-500 mt-2 flex items-center gap-1"><i class="fas fa-circle text-[8px]"></i> ว่างให้จอง</p>
-                            </div>
-                            <div class="text-right">
-                                <span class="block text-xl font-bold text-orange">30</span>
-                                <span class="text-[10px] text-gray-400 font-medium -mt-1 block">NIST</span>
-                            </div>
-                        </div>
-                        <button class="w-full bg-navy text-white py-3 rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-navy/90 active:scale-95 transition-all shadow-md">
-                            <i class="fas fa-calendar-check text-orange"></i> จองห้อง
-                        </button>
-                    </div>
+                <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-green-500 text-2xl shadow-sm relative z-10">
+                    <i class="fas fa-qrcode"></i>
                 </div>
             </div>
         </section>
-<!-- ========================================== -->
-        <!-- My Booking Section (ประวัติการจอง) -->
-        <!-- ========================================== -->
+
+        <!-- Available Rooms Section -->
+        <section>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold"><i class="fas fa-door-open text-orange mr-2"></i>ห้องว่าง</h2>
+                <span class="text-sm text-orange font-medium cursor-pointer">ทั้งหมด</span>
+            </div>
+
+            <div class="space-y-4">
+                
+                <!-- ห้องที่ 1: ห้องศึกษาค้นคว้ากลุ่ม 1 -->
+                <div class="bg-white rounded-[2rem] p-4 shadow-sm border border-gray-100 flex gap-4">
+                    <div class="w-24 h-24 bg-gray-200 rounded-2xl flex-shrink-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80');"></div>
+                    <div class="flex flex-col justify-between flex-1 py-1">
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-navy leading-tight">ห้องศึกษาค้นคว้ากลุ่ม 1</h3>
+                                <span class="bg-green-100 text-green-600 text-[10px] px-2 py-1 rounded-lg font-bold"><i class="fas fa-circle text-[8px] mr-1"></i> ว่างให้จอง</span>
+                            </div>
+                            <p class="text-[11px] text-purple font-medium mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ตึกสำนักวิทยบริการ</p>
+                            <p class="text-xs text-gray-500 mt-0.5"><i class="fas fa-users mr-1"></i> ไม่เกิน 6 คน</p>
+                        </div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="font-bold text-orange text-sm">50 NIST</span>
+                            <button onclick="openModal()" class="bg-navy text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-opacity-90 active:scale-95 transition-all">
+                                <i class="far fa-calendar-check mr-1"></i> จองห้อง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ห้องที่ 2: ห้องทีวีออนไลน์ -->
+                <div class="bg-white rounded-[2rem] p-4 shadow-sm border border-gray-100 flex gap-4">
+                    <div class="w-24 h-24 bg-gray-200 rounded-2xl flex-shrink-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1593784991095-a205069470b6?auto=format&fit=crop&q=80');"></div>
+                    <div class="flex flex-col justify-between flex-1 py-1">
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-navy leading-tight">ห้องทีวีออนไลน์</h3>
+                                <span class="bg-green-100 text-green-600 text-[10px] px-2 py-1 rounded-lg font-bold"><i class="fas fa-circle text-[8px] mr-1"></i> ว่างให้จอง</span>
+                            </div>
+                            <p class="text-[11px] text-purple font-medium mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ตึก Digital Learning Park</p>
+                            <p class="text-xs text-gray-500 mt-0.5"><i class="fas fa-users mr-1"></i> ไม่เกิน 6 คน</p>
+                        </div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="font-bold text-orange text-sm">50 NIST</span>
+                            <button onclick="openModal()" class="bg-navy text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-opacity-90 active:scale-95 transition-all">
+                                <i class="far fa-calendar-check mr-1"></i> จองห้อง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ห้องที่ 3: ห้องศึกษาค้นคว้า A -->
+                <div class="bg-white rounded-[2rem] p-4 shadow-sm border border-gray-100 flex gap-4">
+                    <div class="w-24 h-24 bg-gray-200 rounded-2xl flex-shrink-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1527891751199-7225231a68dd?auto=format&fit=crop&q=80');"></div>
+                    <div class="flex flex-col justify-between flex-1 py-1">
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-navy leading-tight">ห้องศึกษาค้นคว้า A</h3>
+                                <span class="bg-green-100 text-green-600 text-[10px] px-2 py-1 rounded-lg font-bold"><i class="fas fa-circle text-[8px] mr-1"></i> ว่างให้จอง</span>
+                            </div>
+                            <p class="text-[11px] text-purple font-medium mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ตึกสำนักวิทยบริการ</p>
+                            <p class="text-xs text-gray-500 mt-0.5"><i class="fas fa-users mr-1"></i> ไม่เกิน 6 คน</p>
+                        </div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="font-bold text-orange text-sm">50 NIST</span>
+                            <button onclick="openModal()" class="bg-navy text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-opacity-90 active:scale-95 transition-all">
+                                <i class="far fa-calendar-check mr-1"></i> จองห้อง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ห้องที่ 4: ห้อง PLAYGROUND -->
+                <div class="bg-white rounded-[2rem] p-4 shadow-sm border border-gray-100 flex gap-4">
+                    <div class="w-24 h-24 bg-gray-200 rounded-2xl flex-shrink-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1574958269340-fa927503f3dd?auto=format&fit=crop&q=80');"></div>
+                    <div class="flex flex-col justify-between flex-1 py-1">
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-navy leading-tight">ห้อง PLAYGROUND</h3>
+                                <span class="bg-green-100 text-green-600 text-[10px] px-2 py-1 rounded-lg font-bold"><i class="fas fa-circle text-[8px] mr-1"></i> ว่างให้จอง</span>
+                            </div>
+                            <p class="text-[11px] text-purple font-medium mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ตึกสำนักวิทยบริการ</p>
+                            <p class="text-xs text-gray-500 mt-0.5"><i class="fas fa-users mr-1"></i> ไม่เกิน 6 คน</p>
+                        </div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="font-bold text-orange text-sm">50 NIST</span>
+                            <button onclick="openModal()" class="bg-navy text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-opacity-90 active:scale-95 transition-all">
+                                <i class="far fa-calendar-check mr-1"></i> จองห้อง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ห้องที่ 5: ห้องศึกษาค้นคว้า A (2) -->
+                <div class="bg-white rounded-[2rem] p-4 shadow-sm border border-gray-100 flex gap-4">
+                    <div class="w-24 h-24 bg-gray-200 rounded-2xl flex-shrink-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1505409859467-3a796fd5798e?auto=format&fit=crop&q=80');"></div>
+                    <div class="flex flex-col justify-between flex-1 py-1">
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-navy leading-tight">ห้องศึกษาค้นคว้า A</h3>
+                                <span class="bg-green-100 text-green-600 text-[10px] px-2 py-1 rounded-lg font-bold"><i class="fas fa-circle text-[8px] mr-1"></i> ว่างให้จอง</span>
+                            </div>
+                            <p class="text-[11px] text-purple font-medium mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ตึกสำนักวิทยบริการ</p>
+                            <p class="text-xs text-gray-500 mt-0.5"><i class="fas fa-users mr-1"></i> ไม่เกิน 6 คน</p>
+                        </div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="font-bold text-orange text-sm">50 NIST</span>
+                            <button onclick="openModal()" class="bg-navy text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-opacity-90 active:scale-95 transition-all">
+                                <i class="far fa-calendar-check mr-1"></i> จองห้อง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- My Booking Section -->
         <section class="mt-12">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold"><i class="fas fa-ticket-alt text-orange mr-2"></i>การจองของฉัน</h2>
             </div>
             
-            <!-- เริ่มต้น booking-list -->
+            <!-- List รองรับการ์ดจาก Backend -->
             <div id="booking-list">
-                <!-- Booking Card -->
-                <div class="bg-white rounded-[2rem] p-5 shadow-md border-l-4 border-purple relative overflow-hidden hover:shadow-lg transition-shadow">
-                    <!-- วงกลมตกแต่งพื้นหลัง -->
-                    <div class="absolute -right-10 -top-10 w-32 h-32 bg-purple/5 rounded-full blur-2xl pointer-events-none"></div>
-                    
-                    <div class="flex justify-between items-start mb-5 relative z-10">
-                        <div>
-                            <span class="inline-block px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full mb-3 tracking-wide uppercase">
-                                <i class="fas fa-check-circle mr-1"></i> Confirmed
-                            </span>
-                            <h3 class="font-bold text-xl text-navy">ห้องศึกษาค้นคว้ากลุ่ม 1</h3>
-                            <p class="text-sm text-gray-500 mt-2 font-medium"><i class="fas fa-calendar-alt text-orange/70 mr-2 w-4"></i> 27 ก.ย. 2026</p>
-                            <p class="text-sm text-gray-500 mt-1 font-medium"><i class="fas fa-clock text-orange/70 mr-2 w-4"></i> 13:00 - 15:00 น.</p>
-                        </div>
-                        <div class="text-right bg-orange/10 px-3 py-2 rounded-xl">
-                            <span class="block text-lg font-bold text-orange">-50</span>
-                            <span class="text-[10px] text-orange/70 font-bold block">NIST</span>
-                        </div>
-                    </div>
-                    
-                    <div class="flex gap-3 relative z-10 border-t border-gray-100 pt-4">
-                        <button class="flex-1 bg-gray-50 text-navy py-2.5 rounded-xl text-sm font-bold hover:bg-gray-100 active:scale-95 transition-all">
-                            <i class="fas fa-qrcode mr-1"></i> แสดง QR Code
-                        </button>
-                        <button onclick="cancelBooking(this)" class="flex-1 bg-red-50 text-red-500 py-2.5 rounded-xl text-sm font-bold hover:bg-red-100 active:scale-95 transition-all">
-                            ยกเลิกการจอง
-                        </button>
-                    </div>
-                </div>
-            </div> <!-- ปิดแท็ก booking-list ตรงนี้ -->
+                <p class="text-center text-gray-400 text-sm py-4">ยังไม่มีประวัติการจอง</p>
+            </div> 
         </section>
 
         <!-- ========================================== -->
-        <!-- Trust Score & Activity Section -->
+        <!-- Trust Score History Section -->
         <!-- ========================================== -->
-        <section class="mt-12 mb-12">
+        <section class="mt-12 mb-10">
             <h2 class="text-xl font-bold mb-6"><i class="fas fa-shield-alt text-purple mr-2"></i>ประวัติความน่าเชื่อถือ</h2>
             
-            <div class="bg-white rounded-[2rem] p-6 shadow-md relative overflow-hidden">
-                <!-- สรุปคะแนน -->
-                <div class="text-center mb-8 relative z-10">
-                    <div class="w-28 h-28 mx-auto bg-gradient-to-br from-purple to-indigo-600 rounded-full flex items-center justify-center text-white shadow-xl shadow-purple/20 mb-4 border-4 border-white outline outline-4 outline-purple/10">
+            <div class="bg-white rounded-[2rem] p-6 shadow-md border-t-4 border-purple">
+                <div class="flex flex-col items-center justify-center mb-6">
+                    <div class="w-32 h-32 rounded-full border-8 border-purple/20 flex items-center justify-center bg-purple text-white shadow-lg mb-4">
                         <div class="text-center">
-                            <span class="text-4xl font-black block leading-none">82</span>
-                            <span class="text-[10px] opacity-70 font-medium">/ 100</span>
+                            <!-- เพิ่ม id="trust-score-circle" เพื่อให้ JS มาอัปเดตเลขตรงนี้ -->
+                            <span id="trust-score-circle" class="text-4xl font-black block leading-none">0</span>
+                            <span class="text-[10px] uppercase tracking-wider opacity-80">/ 100</span>
                         </div>
                     </div>
                     <h3 class="font-bold text-navy text-lg">สถานะบัญชี: ดีมาก 🌟</h3>
-                    <p class="text-sm text-gray-500 mt-1">รักษาระดับไว้เพื่อรับสิทธิ์จองล่วงหน้าได้นานขึ้น</p>
+                    <p class="text-xs text-gray-500 mt-1">รักษาระดับไว้เพื่อรับสิทธิ์จองล่วงหน้าได้นานขึ้น</p>
                 </div>
-                
-                <!-- ประวัติกิจกรรม (Recent Activity) -->
-                <div class="bg-gray-50 rounded-2xl p-5">
-                    <h4 class="font-bold text-navy text-sm mb-4 flex justify-between items-center">
-                        กิจกรรมล่าสุด 
-                        <span class="text-xs text-purple font-medium cursor-pointer hover:underline">ดูทั้งหมด</span>
-                    </h4>
+
+                <div class="bg-gray-50 rounded-2xl p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold text-sm text-navy">กิจกรรมล่าสุด</h4>
+                    </div>
                     
-                    <div class="space-y-4">
-                        <!-- Activity 1 -->
-                        <div class="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm">
+                    <!-- เปลี่ยน Mockup เป็นค่าเริ่มต้นระบบ (ตัดเรื่องคืนห้องออก) -->
+                    <div class="space-y-3" id="trust-activity-list">
+                        <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-green-100 text-green-500 flex items-center justify-center">
-                                    <i class="fas fa-door-closed"></i>
+                                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center text-xs">
+                                    <i class="fas fa-power-off"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-bold text-navy">คืนห้องตรงเวลา</p>
-                                    <p class="text-xs text-gray-400">25 ก.ย. 2026</p>
+                                    <p class="text-sm font-bold text-navy">เริ่มต้นใช้งานระบบ</p>
+                                    <p class="text-[10px] text-gray-400">ได้รับโบนัสค่าเริ่มต้น</p>
                                 </div>
                             </div>
-                            <span class="text-sm font-black text-green-500">+3</span>
-                        </div>
-                        
-                        <!-- Activity 2 -->
-                        <div class="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center">
-                                    <i class="fas fa-hands-helping"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-bold text-navy">เข้าร่วมกิจกรรมมหาลัย</p>
-                                    <p class="text-xs text-gray-400">20 ก.ย. 2026</p>
-                                </div>
-                            </div>
-                            <span class="text-sm font-black text-blue-500">+5</span>
-                        </div>
-                        
-                        <!-- Activity 3 -->
-                        <div class="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm opacity-70">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-red-100 text-red-500 flex items-center justify-center">
-                                    <i class="fas fa-user-times"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-bold text-navy">ไม่มาตามเวลาจอง (No-show)</p>
-                                    <p class="text-xs text-gray-400">12 ก.ย. 2026</p>
-                                </div>
-                            </div>
-                            <span class="text-sm font-black text-red-500">-10</span>
+                            <span class="text-blue-500 font-bold text-sm">+80</span>
                         </div>
                     </div>
                 </div>
@@ -287,211 +297,312 @@
 
     </main>
 
-    <!-- สคริปต์จำลองการกดปุ่ม -->
-    <script>
-        function connectWallet() {
-            const btn = document.getElementById('wallet-btn');
-            const text = document.getElementById('wallet-text');
+    <!-- ========================================== -->
+    <!-- Booking Modal -->
+    <!-- ========================================== -->
+    <div id="reservation-modal" class="fixed inset-0 bg-navy/80 z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300 backdrop-blur-sm px-5">
+        <div id="modal-content" class="bg-white rounded-[2rem] p-6 w-full max-w-sm transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-navy">ยืนยันการจอง</h3>
+                <button onclick="closeModal()" class="w-8 h-8 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
             
-            // เปลี่ยนสีปุ่มและไอคอนให้รู้ว่าต่อแล้ว
-            btn.classList.remove('bg-navy', 'text-white');
-            btn.classList.add('bg-white', 'text-navy', 'border-2', 'border-navy');
-            
-            text.innerText = '0xEC...58ED';
-        }
-    </script>
-    <!-- Reservation Modal (ซ่อนไว้เป็นค่าเริ่มต้น) -->
-    <div id="reservation-modal" class="fixed inset-0 bg-navy/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        
-        <!-- กล่อง Modal -->
-        <div class="bg-white rounded-[2rem] p-6 md:p-8 w-full max-w-md shadow-2xl relative border border-gray-100 mx-4 transform scale-95 transition-transform duration-300" id="modal-content">
-            
-            <!-- ปุ่มปิด -->
-            <button onclick="closeModal()" class="absolute top-6 right-6 text-gray-400 hover:text-navy transition-colors active:scale-90">
-                <i class="fas fa-times text-xl"></i>
-            </button>
+            <p class="text-gray-500 text-sm mb-5">ห้องศึกษาค้นคว้ากลุ่ม 1</p>
 
-            <h2 class="text-2xl font-bold text-navy mb-2">ยืนยันการจอง</h2>
-            <p class="text-gray-500 mb-6 font-medium">ห้องศึกษาค้นคว้ากลุ่ม 1</p>
-
-            <!-- บล็อกรายละเอียดราคา -->
-            <div class="bg-orange/10 rounded-2xl p-4 mb-6 border border-orange/20">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-sm font-medium text-navy/70"><i class="fas fa-user-group text-purple mr-1"></i> ความจุสูงสุด</span>
-                    <span class="text-sm font-bold text-navy">8 คน</span>
+            <div class="bg-orange/5 rounded-2xl p-4 mb-5 border border-orange/20">
+                <div class="flex justify-between text-sm mb-2">
+                    <span class="text-gray-600"><i class="fas fa-users text-orange/50 mr-2"></i> ความจุสูงสุด</span>
+                    <span class="font-bold text-navy">8 คน</span>
                 </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm font-medium text-navy/70"><i class="fas fa-coins text-orange mr-1"></i> ค่าธรรมเนียม</span>
-                    <span class="text-sm font-bold text-orange">50 NIST</span>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-600"><i class="fas fa-coins text-orange/50 mr-2"></i> ค่าธรรมเนียม</span>
+                    <span class="font-bold text-orange">50 NIST</span>
                 </div>
             </div>
 
-            <!-- ฟอร์มเลือกเวลา -->
-            <div class="space-y-4 mb-8">
+            <div class="space-y-4 mb-6">
                 <div>
-                    <label class="block text-sm font-bold text-navy mb-2">เลือกวันที่</label>
-                    <input type="date" class="w-full bg-gray-50 border border-gray-200 text-navy text-sm font-medium rounded-xl focus:ring-orange focus:border-orange block p-3 outline-none transition-all">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">เลือกวันที่</label>
+                    <input type="date" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-navy transition-colors">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-navy mb-2">เลือกช่วงเวลา</label>
-                    <select class="w-full bg-gray-50 border border-gray-200 text-navy text-sm font-medium rounded-xl focus:ring-orange focus:border-orange block p-3 outline-none transition-all">
-                        <option>10:00 - 12:00</option>
-                        <option selected>13:00 - 15:00</option>
-                        <option>15:00 - 17:00</option>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">เลือกช่วงเวลา</label>
+                    <select class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-navy transition-colors appearance-none">
+                        <option>09:00 - 11:00 น.</option>
+                        <option>11:00 - 13:00 น.</option>
+                        <option selected>13:00 - 15:00 น.</option>
+                        <option>15:00 - 17:00 น.</option>
                     </select>
                 </div>
             </div>
 
-            <!-- ปุ่มยืนยัน -->
-            <button onclick="confirmBooking()" class="w-full py-4 bg-navy hover:bg-navy/90 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
+            <button onclick="confirmBooking()" class="w-full bg-navy text-white py-4 rounded-xl font-bold hover:bg-opacity-90 active:scale-95 transition-all shadow-lg flex justify-center items-center gap-2">
                 <i class="fas fa-check-circle text-orange"></i> ชำระ 50 NIST และจอง
             </button>
         </div>
     </div>
 
-<!-- ดึงไลบรารี Ethers.js มาใช้งาน -->
+    <!-- ========================================== -->
+    <!-- QR Scanner Modal (จำลอง) -->
+    <!-- ========================================== -->
+    <div id="qr-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300 backdrop-blur-sm">
+        <div id="qr-content" class="bg-white rounded-[2rem] p-6 w-[90%] max-w-sm transform scale-95 transition-transform duration-300 text-center relative overflow-hidden">
+            <h3 class="text-xl font-bold text-navy mb-2">สแกน QR เช็คอิน</h3>
+            <p class="text-sm text-gray-500 mb-6">นำกล้องส่องไปที่ QR Code ของกิจกรรม</p>
+            
+            <div class="relative w-56 h-56 mx-auto bg-gray-50 rounded-2xl overflow-hidden border-4 border-dashed border-gray-300 mb-6 shadow-inner">
+                <div class="absolute top-0 left-0 w-full h-1 bg-green-500 shadow-[0_0_15px_5px_rgba(34,197,94,0.4)] animate-scan"></div>
+                <i class="fas fa-qrcode text-7xl text-gray-200 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></i>
+            </div>
+            
+            <button onclick="closeQrScanner()" class="w-full bg-gray-100 text-gray-500 py-3 rounded-xl font-bold hover:bg-gray-200 active:scale-95 transition-all">
+                ยกเลิก
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JavaScript Application Logic -->
+    <!-- ========================================== -->
+<!-- 1. ดึง Ethers.js จากลิงก์สำรอง (CDNJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 
+    <!-- 2. โค้ด JavaScript ของแอปพลิเคชัน -->
     <script>
-        // ==========================================
-        // 1. ตั้งค่า Smart Contract (คุณต้องเปลี่ยนค่าตรงนี้)
-        // ==========================================
+        // เช็กใน Console ว่า Ethers โหลดสำเร็จหรือไม่
+        window.onload = () => {
+            if (typeof ethers === 'undefined') {
+                console.error("❌ Ethers.js โหลดไม่สำเร็จ กรุณาเช็กการเชื่อมต่ออินเทอร์เน็ต");
+            } else {
+                console.log("✅ Ethers.js โหลดพร้อมใช้งานแล้ว!");
+            }
+        };
+
         const NIST_CONTRACT_ADDRESS = "0xEC08895F6C21f17b9b4D32b5bE3CcAA79b0E58ED"; 
         const RECEIVER_ADDRESS = "0x82F4F791A79f0Dc6a8eE39888c05D0B4E9A093Cb"; 
+        const API_URL = "http://localhost:8080/api";
         
-        // ABI พื้นฐานสำหรับเช็คยอดและโอนเหรียญ (ERC-20)
-        const NIST_ABI = [
-            "function balanceOf(address owner) view returns (uint256)",
-            "function transfer(address to, uint amount) returns (bool)",
-            "function symbol() view returns (string)"
-        ];
-
         let provider;
         let signer;
         let nistContract;
-        let userAddress;
+        let currentWallet = "";
 
-        // ==========================================
-        // 2. ฟังก์ชันเชื่อมต่อ MetaMask
-        // ==========================================
+        const erc20Abi = [
+            "function balanceOf(address owner) view returns (uint256)",
+            "function decimals() view returns (uint8)",
+            "function transfer(address to, uint256 amount) returns (bool)"
+        ];
+
         async function connectWallet() {
+            // ดักจับ Error กรณี Ethers ยังไม่โหลด
+            if (typeof ethers === 'undefined') {
+                alert("ระบบกำลังโหลดไลบรารี Web3 กรุณารอสักครู่แล้วกดใหม่ครับ");
+                return;
+            }
+
             if (typeof window.ethereum !== 'undefined') {
                 try {
-                    // ขอเชื่อมต่อ MetaMask
                     await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    
                     provider = new ethers.providers.Web3Provider(window.ethereum);
                     signer = provider.getSigner();
-                    userAddress = await signer.getAddress();
                     
-                    // อัปเดต UI ปุ่ม Connect
-                    const btn = document.getElementById('wallet-btn');
-                    const text = document.getElementById('wallet-text');
-                    btn.classList.remove('bg-navy', 'text-white');
-                    btn.classList.add('bg-white', 'text-navy', 'border-2', 'border-navy');
-                    text.innerText = userAddress.slice(0, 5) + '...' + userAddress.slice(-4);
+                    const address = await signer.getAddress();
+                    currentWallet = address;
+                    
+                    document.getElementById('connect-btn').innerHTML = 
+                        `<i class="fas fa-wallet text-orange"></i> <span class="font-bold">${address.substring(0, 6)}...${address.substring(38)}</span>`;
+                    document.getElementById('connect-btn').classList.add('bg-white', 'text-navy', 'border', 'border-gray-200');
+                    document.getElementById('connect-btn').classList.remove('bg-navy', 'text-white');
 
-                    // สร้างอินสแตนซ์ของ Contract
-                    nistContract = new ethers.Contract(NIST_CONTRACT_ADDRESS, NIST_ABI, signer);
+                    nistContract = new ethers.Contract(NIST_CONTRACT_ADDRESS, erc20Abi, signer);
                     
-                    // ดึงยอดคงเหลือ (Balance) มาโชว์
-                    const balance = await nistContract.balanceOf(userAddress);
-                    const formattedBalance = ethers.utils.formatUnits(balance, 18); // สมมติว่าเหรียญมี 18 Decimals
-                    console.log("ยอด NIST ของคุณ:", formattedBalance);
-                    
-                    // *จุดที่คุณต้องไปแก้ HTML ให้มี id="nist-balance" เพื่อเอาค่านี้ไปโชว์*
-                    // document.getElementById('nist-balance').innerText = Math.floor(formattedBalance);
+                    const balance = await nistContract.balanceOf(address);
+                    const decimals = await nistContract.decimals();
+                    const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+                    document.getElementById('nist-balance').innerText = parseFloat(formattedBalance).toFixed(0);
+
+                    // --- จำลองฐานข้อมูลนิสิต (Mapping เลขกระเป๋ากับข้อมูล) ---
+                    const studentProfiles = {
+                        // 1. กระเป๋าหลักของคุณ (แทนค่า 0xFe00... เป็นเลขกระเป๋าหลักของคุณให้ครบ)
+                        "0xFe00543965b15ac0c1AbeD17517b633D4FffB57D": {
+                            name: "กัญญาวีร์ ศรีพันธ์ 👋",
+                            role: '<i class="fas fa-id-card mr-1"></i> 66011211068 (IT)'
+                        },
+                        // 2. กระเป๋า Account 2 สำหรับทดสอบ (เอา Address กระเป๋าใหม่มาใส่ตรงนี้)
+                        "0x0000000000000000000000000000000000000000": { 
+                            name: "นิสิต ทดสอบระบบ 👋",
+                            role: '<i class="fas fa-id-card mr-1"></i> 66011211999 (Engineering)'
+                        }
+                    };
+
+                    // เช็กว่ากระเป๋าที่เชื่อมเข้ามา มีข้อมูลในระบบไหม
+                    const profile = studentProfiles[currentWallet];
+                    if (profile) {
+                        // ถ้ามี ดึงชื่อและรหัสมาโชว์
+                        document.getElementById('user-greeting').innerText = profile.name;
+                        document.getElementById('user-role').innerHTML = profile.role;
+                    } else {
+                        // ถ้าเป็นกระเป๋าแปลกปลอม (กระเป๋าใหม่)
+                        document.getElementById('user-greeting').innerText = "นิสิตใหม่ (New) 👋";
+                        document.getElementById('user-role').innerHTML = '<i class="fas fa-user-circle mr-1"></i> รอยืนยันตัวตน';
+                    }
+
+                    document.getElementById('user-greeting').innerText = "กัญญาวีร์ ศรีพันธ์ 👋";
+                    document.getElementById('user-role').innerHTML = '<i class="fas fa-id-card mr-1"></i> 66011211068 (IT)';
 
                 } catch (error) {
-                    console.error("User denied connection", error);
+                    console.error("Connection failed:", error);
+                    alert("เกิดข้อผิดพลาดในการเชื่อมต่อกระเป๋า: " + error.message);
                 }
             } else {
-                alert('กรุณาติดตั้ง MetaMask Extension ในเบราว์เซอร์ก่อนครับ!');
+                alert("กรุณาติดตั้ง MetaMask Extension ก่อนใช้งาน");
             }
         }
 
         // ==========================================
-        // 3. ฟังก์ชันหักเหรียญเมื่อกดยืนยันการจอง
+        // Backend API Integrations
+        // ==========================================
+        // โหลดคะแนน Trust Score จาก Backend
+        async function loadUserData(wallet) {
+            try {
+                const res = await fetch(`${API_URL}/user?wallet=${wallet}`);
+                const data = await res.json();
+                
+                // 1. อัปเดตการ์ด Trust Score ด้านบน
+                document.getElementById('trust-score').innerText = data.trust_score;
+                
+                // 2. อัปเดตตัวเลขในวงกลมประวัติความน่าเชื่อถือด้านล่าง
+                const circleScore = document.getElementById('trust-score-circle');
+                if (circleScore) {
+                    circleScore.innerText = data.trust_score;
+                }
+            } catch (error) { 
+                console.error("API Error:", error); 
+            }
+        }
+
+        async function loadBookings(wallet) {
+            try {
+                const res = await fetch(`${API_URL}/bookings?wallet=${wallet}`);
+                const bookings = await res.json();
+                
+                const list = document.getElementById('booking-list');
+                list.innerHTML = ""; 
+                
+                if (bookings.length === 0) {
+                    list.innerHTML = `<p class="text-center text-gray-400 text-sm py-4">ยังไม่มีประวัติการจอง</p>`;
+                    return;
+                }
+
+                // วนลูปสร้างการ์ดจากข้อมูลจริง
+                bookings.reverse().forEach(b => {
+                    if (b.status === "Cancelled") return; // ซ่อนอันที่ยกเลิกไปแล้ว
+                    
+                    const html = `
+                    <div class="bg-white rounded-[2rem] p-5 shadow-md border-l-4 border-green-500 relative overflow-hidden mb-4">
+                        <div class="flex justify-between items-start mb-5 relative z-10">
+                            <div>
+                                <span class="inline-block px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full mb-3 uppercase">
+                                    <i class="fas fa-check-circle mr-1"></i> ${b.status}
+                                </span>
+                                <h3 class="font-bold text-xl text-navy">${b.room_name}</h3>
+                                <p class="text-sm text-gray-500 mt-2 font-medium"><i class="fas fa-calendar-alt text-orange/70 mr-2 w-4"></i> ${b.date}</p>
+                                <p class="text-sm text-gray-500 mt-1 font-medium"><i class="fas fa-clock text-orange/70 mr-2 w-4"></i> ${b.time} น.</p>
+                            </div>
+                            <div class="text-right bg-orange/10 px-3 py-2 rounded-xl">
+                                <span class="block text-lg font-bold text-orange">-50</span>
+                                <span class="text-[10px] text-orange/70 font-bold block">NIST</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 relative z-10 border-t border-gray-100 pt-4">
+                            <button onclick="alert('แสดงภาพ QR Code (Mockup)')" class="flex-1 bg-gray-50 text-navy py-2.5 rounded-xl text-sm font-bold hover:bg-gray-100 transition-all">
+                                <i class="fas fa-qrcode mr-1"></i> QR Code
+                            </button>
+                            <button onclick="cancelBookingAPI('${b.id}')" class="flex-1 bg-red-50 text-red-500 py-2.5 rounded-xl text-sm font-bold hover:bg-red-100 transition-all">
+                                ยกเลิกการจอง
+                            </button>
+                        </div>
+                    </div>`;
+                    list.insertAdjacentHTML('beforeend', html);
+                });
+            } catch (error) { console.error("API Error:", error); }
+        }
+
+        async function cancelBookingAPI(bookingId) {
+            if(confirm("แน่ใจหรือไม่? (ระบบจะไม่คืนเหรียญ 50 NIST และหัก 2 Trust Score)")) {
+                await fetch(`${API_URL}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ booking_id: bookingId, wallet_address: currentWallet })
+                });
+                
+                await loadUserData(currentWallet);
+                await loadBookings(currentWallet); 
+                alert("ยกเลิกการจองเรียบร้อย! (คุณถูกหัก 2 คะแนน)");
+            }
+        }
+
+        // ==========================================
+        // ระบบชำระเงินและบันทึกการจอง
         // ==========================================
         async function confirmBooking() {
-            if (!nistContract) {
-                alert("กรุณาเชื่อมต่อ Wallet ก่อนทำการจองครับ");
+            if (!nistContract || !currentWallet) {
+                alert("กรุณาเชื่อมต่อกระเป๋าก่อนทำรายการ");
                 return;
             }
 
             try {
-                // ระบุจำนวนเหรียญที่ต้องหัก (50 NIST)
-                const amount = ethers.utils.parseUnits("50", 18); 
-
-                // เด้ง MetaMask ให้กดยืนยันการโอน
-                const tx = await nistContract.transfer(RECEIVER_ADDRESS, amount);
-                alert("ส่งคำสั่งแล้ว กรุณารอระบบ Blockchain ประมวลผลสักครู่...");
+                const amountToTransfer = ethers.utils.parseUnits("50", 18);
+                const tx = await nistContract.transfer(RECEIVER_ADDRESS, amountToTransfer);
                 
-                // รอจนกว่า Transaction จะสำเร็จ
+                alert("ส่งคำสั่งโอนแล้ว กรุณารอระบบ Blockchain ประมวลผลสักครู่...");
+                document.querySelector('button[onclick="confirmBooking()"]').innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังประมวลผล...';
                 
-                // รอจนกว่า Transaction จะสำเร็จ
-                await tx.wait();
-                
+                await tx.wait(); 
                 closeModal();
-
-                // 1. อัปเดตตัวเลขยอดเหรียญบนหน้าเว็บให้ลดลง 50 แบบเรียลไทม์
+                
+                // ตัดยอดเหรียญบนหน้า UI ให้เห็นทันที
                 const balanceElement = document.getElementById('nist-balance');
-                if (balanceElement) {
-                    let currentBalance = parseInt(balanceElement.innerText.replace(/,/g, ''));
-                    if (!isNaN(currentBalance)) {
-                        balanceElement.innerText = currentBalance - 50;
-                    }
+                if (balanceElement) { 
+                    balanceElement.innerText = parseInt(balanceElement.innerText.replace(/,/g, '')) - 50; 
                 }
                 
-                // 2. ดึงค่าจากฟอร์ม
-                const dateInput = document.querySelector('input[type="date"]').value;
+                // ส่งข้อมูลไปบันทึกลง Backend
+                const dateInput = document.querySelector('input[type="date"]').value || "28 ก.ย. 2026";
                 const timeInput = document.querySelector('select').value;
-                const displayDate = dateInput ? dateInput : "28 ก.ย. 2026";
                 
-                // 3. สร้างการ์ดใบใหม่ที่เพิ่ม "ปุ่มยกเลิก" และระบบแจ้งเตือนเมื่อคลิกปุ่ม
-                const newBookingHTML = `
-            <div class="bg-white rounded-[2rem] p-5 shadow-md border-l-4 border-green-500 relative overflow-hidden hover:shadow-lg transition-shadow mb-4">
-                <div class="absolute -right-10 -top-10 w-32 h-32 bg-green-500/5 rounded-full blur-2xl pointer-events-none"></div>
-                <div class="flex justify-between items-start mb-5 relative z-10">
-                    <div>
-                        <span class="inline-block px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full mb-3 tracking-wide uppercase">
-                            <i class="fas fa-check-circle mr-1"></i> New Booking
-                        </span>
-                        <h3 class="font-bold text-xl text-navy">ห้องศึกษาค้นคว้ากลุ่ม 1</h3>
-                        <p class="text-sm text-gray-500 mt-2 font-medium"><i class="fas fa-calendar-alt text-orange/70 mr-2 w-4"></i> ${displayDate}</p>
-                        <p class="text-sm text-gray-500 mt-1 font-medium"><i class="fas fa-clock text-orange/70 mr-2 w-4"></i> ${timeInput} น.</p>
-                    </div>
-                    <div class="text-right bg-orange/10 px-3 py-2 rounded-xl">
-                        <span class="block text-lg font-bold text-orange">-50</span>
-                        <span class="text-[10px] text-orange/70 font-bold block">NIST</span>
-                    </div>
-                </div>
-                
-                <div class="flex gap-3 relative z-10 border-t border-gray-100 pt-4">
-                    <button onclick="alert('แสดงภาพ QR Code สำหรับสแกนหน้าห้อง (Mockup)')" class="flex-1 bg-gray-50 text-navy py-2.5 rounded-xl text-sm font-bold hover:bg-gray-100 active:scale-95 transition-all">
-                        <i class="fas fa-qrcode mr-1"></i> แสดง QR Code
-                    </button>
-                    <button onclick="cancelBooking(this)" class="flex-1 bg-red-50 text-red-500 py-2.5 rounded-xl text-sm font-bold hover:bg-red-100 active:scale-95 transition-all">
-                        ยกเลิกการจอง
-                    </button>
-                </div>
-            </div>
-            `;
-                
-                // 4. แทรกการ์ดลงในหน้าเว็บ
-                document.getElementById('booking-list').insertAdjacentHTML('afterbegin', newBookingHTML);
+                await fetch(`${API_URL}/book`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet_address: currentWallet,
+                        room_name: "ห้องศึกษาค้นคว้ากลุ่ม 1",
+                        date: dateInput,
+                        time: timeInput
+                    })
+                });
+
+                await loadBookings(currentWallet);
                 alert("หัก 50 NIST สำเร็จ! เพิ่มประวัติการจองเรียบร้อย");
-                    
+                
+                // รีเซ็ตปุ่มจอง
+                document.querySelector('button[onclick="confirmBooking()"]').innerHTML = '<i class="fas fa-check-circle text-orange"></i> ชำระ 50 NIST และจอง';
+
             } catch (error) {
                 console.error("Transaction failed", error);
-                alert("การทำธุรกรรมล้มเหลว หรือถูกยกเลิกโดยผู้ใช้");
+                alert("การชำระเงินล้มเหลว หรือถูกยกเลิก");
+                document.querySelector('button[onclick="confirmBooking()"]').innerHTML = '<i class="fas fa-check-circle text-orange"></i> ชำระ 50 NIST และจอง';
             }
         }
 
-        // ฟังก์ชันเปิด/ปิด Modal (เหมือนเดิม)
+        // ==========================================
+        // UI Modal ควบคุมหน้าต่างจองและ QR
+        // ==========================================
         const modal = document.getElementById('reservation-modal');
         const modalContent = document.getElementById('modal-content');
-
+        
         function openModal() {
             modal.classList.remove('hidden');
             setTimeout(() => {
@@ -507,28 +618,52 @@
             modalContent.classList.add('scale-95');
             setTimeout(() => { modal.classList.add('hidden'); }, 300);
         }
-        function cancelBooking(buttonElement) {
-        // แจ้งเตือนขู่เรื่องริบเหรียญและหักคะแนน
-        if(confirm("แน่ใจหรือไม่ว่าจะยกเลิกการจอง? (ระบบจะไม่คืนเหรียญ 50 NIST และคุณจะถูกหักคะแนนความน่าเชื่อถือ 2 คะแนน)")) {
-            
-            // 1. ลบการ์ดประวัติการจองทิ้ง
-            const card = buttonElement.closest('.bg-white');
-            card.remove();
 
-            // 2. ดึงคะแนน Trust Score ปัจจุบันมาหักออก 2 คะแนน
-            const scoreElement = document.getElementById('trust-score');
-            if (scoreElement) {
-                let currentScore = parseInt(scoreElement.innerText);
-                if (!isNaN(currentScore)) {
-                    scoreElement.innerText = currentScore - 2;
-                }
+        const qrModal = document.getElementById('qr-modal');
+        const qrContent = document.getElementById('qr-content');
+        let scanTimeout;
+
+        function openQrScanner() {
+            if (!currentWallet) {
+                alert("กรุณาเชื่อมต่อกระเป๋าก่อนร่วมกิจกรรม");
+                return;
             }
-            
-            // *ไม่ต้องใส่โค้ดคืนเหรียญแล้ว ปล่อยให้ยอดเงินเท่าเดิม*
-            
-            alert("ยกเลิกการจองเรียบร้อย! (คุณถูกหัก 2 คะแนน)");
+
+            qrModal.classList.remove('hidden');
+            setTimeout(() => {
+                qrModal.classList.remove('opacity-0');
+                qrContent.classList.remove('scale-95');
+                qrContent.classList.add('scale-100');
+            }, 10);
+
+            scanTimeout = setTimeout(async () => {
+                closeQrScanner();
+                
+                // จำลองบวก NIST บน UI (MVP)
+                const balanceElement = document.getElementById('nist-balance');
+                if (balanceElement) { balanceElement.innerText = parseInt(balanceElement.innerText.replace(/,/g, '')) + 20; }
+                
+                // เรียก API แจก Trust Score ลง Database
+                await fetch(`${API_URL}/earn`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet_address: currentWallet })
+                });
+                await loadUserData(currentWallet);
+                
+                alert("🎉 สแกนสำเร็จ!\nเข้าร่วมกิจกรรมปฐมนิเทศเรียบร้อย\n\nได้รับ: +20 NIST และ +5 Trust Score");
+            }, 3000); 
         }
-    }
+
+        function closeQrScanner() {
+            clearTimeout(scanTimeout); 
+            qrModal.classList.add('opacity-0');
+            qrContent.classList.remove('scale-100');
+            qrContent.classList.add('scale-95');
+            setTimeout(() => { qrModal.classList.add('hidden'); }, 300);
+        }
+        
     </script>
+
 </body>
 </html>
