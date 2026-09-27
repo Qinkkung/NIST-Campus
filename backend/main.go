@@ -16,7 +16,8 @@ import (
 // ==========================================
 type User struct {
 	WalletAddress string `json:"wallet_address"`
-	TrustScore    int    `json:"trust_score"`
+	TrustScore         int  `json:"trust_score"`
+	OrientationClaimed bool `json:"orientation_claimed"`
 }
 
 type Booking struct {
@@ -176,6 +177,23 @@ func cancelBookingHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Cancelled successfully and Trust Score updated"})
 }
 
+// รับคะแนนปฐมนิเทศได้เพียง 1 ครั้งต่อกระเป๋า (+5 Trust Score)
+func claimOrientationHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost { http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed); return }
+	var req struct { WalletAddress string `json:"wallet_address"` }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { http.Error(w, err.Error(), http.StatusBadRequest); return }
+	if req.WalletAddress == "" { http.Error(w, "wallet_address is required", http.StatusBadRequest); return }
+	mutex.Lock(); defer mutex.Unlock()
+	for i := range users {
+		if users[i].WalletAddress != req.WalletAddress { continue }
+		if users[i].OrientationClaimed { http.Error(w, "Orientation score already claimed", http.StatusConflict); return }
+		users[i].TrustScore += 5; users[i].OrientationClaimed = true
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"message":"Orientation score claimed successfully", "new_score":users[i].TrustScore, "orientation_claimed":true})
+		return
+	}
+	http.Error(w, "User not found", http.StatusNotFound)
+}
 // ทำกิจกรรมรับคะแนน (เพิ่ม Trust Score 5 คะแนน)
 func earnActivityHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -276,6 +294,7 @@ func main() {
 	http.HandleFunc("/api/book", enableCORS(bookRoomHandler))
 	http.HandleFunc("/api/cancel", enableCORS(cancelBookingHandler))
 	http.HandleFunc("/api/earn", enableCORS(earnActivityHandler))
+	http.HandleFunc("/api/orientation-claim", enableCORS(claimOrientationHandler))
 	http.HandleFunc("/api/transaction", enableCORS(createTransactionHandler))
 	http.HandleFunc("/api/transactions", enableCORS(getTransactionsHandler))
 
