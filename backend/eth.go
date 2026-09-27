@@ -180,6 +180,45 @@ func isHexAddress(s string) bool {
 
 func getEnv(key string) string { return os.Getenv(key) }
 
+func getTreasuryDiagnostics() (string, *big.Int, *big.Int, error) {
+    privateKeyHex := strings.TrimSpace(getEnv("NIST_TREASURY_PRIVATE_KEY"))
+    if privateKeyHex == "" {
+        return "", nil, nil, fmt.Errorf("ยังไม่ได้ตั้งค่า NIST_TREASURY_PRIVATE_KEY บน Backend")
+    }
+    d, err := parsePrivateKey(privateKeyHex)
+    if err != nil { return "", nil, nil, err }
+    derived := ethAddressFromPrivate(d)
+
+    bnbRaw, err := rpcCall("eth_getBalance", []interface{}{derived, "latest"})
+    if err != nil { return derived, nil, nil, fmt.Errorf("อ่าน tBNB balance ไม่สำเร็จ: %w", err) }
+    bnb, err := hexQuantityToBig(bnbRaw)
+    if err != nil { return derived, nil, nil, err }
+
+    tokenCall := "0x70a08231" + strings.Repeat("0", 24) + strings.TrimPrefix(derived, "0x")
+    tokenRaw, err := rpcCall("eth_call", []interface{}{map[string]string{
+        "to": NISTContractAddress,
+        "data": tokenCall,
+    }, "latest"})
+    if err != nil { return derived, bnb, nil, fmt.Errorf("อ่าน NIST balance ไม่สำเร็จ: %w", err) }
+    token, err := hexQuantityToBig(tokenRaw)
+    if err != nil { return derived, bnb, nil, err }
+
+    return derived, bnb, token, nil
+}
+
+func formatNIST(raw *big.Int) string {
+    if raw == nil { return "unknown" }
+    whole := new(big.Int).Quo(new(big.Int).Set(raw), big.NewInt(1000000000000000000))
+    return whole.String()
+}
+
+func formatBNB(raw *big.Int) string {
+    if raw == nil { return "unknown" }
+    whole := new(big.Int).Quo(new(big.Int).Set(raw), big.NewInt(1000000000000000000))
+    frac := new(big.Int).Mod(new(big.Int).Set(raw), big.NewInt(1000000000000000000))
+    return fmt.Sprintf("%s.%018s", whole.String(), frac.String())
+}
+
 func sendNISTTransfer(toWallet string,amountNIST int64)(string,error){
     privateKeyHex:=strings.TrimSpace(getEnv("NIST_TREASURY_PRIVATE_KEY"));if privateKeyHex==""{return "",fmt.Errorf("ยังไม่ได้ตั้งค่า NIST_TREASURY_PRIVATE_KEY บน Backend")}
     d,err:=parsePrivateKey(privateKeyHex);if err!=nil{return "",err}
