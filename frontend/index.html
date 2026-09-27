@@ -389,6 +389,42 @@
         let nistContract;
         let currentWallet = "";
 
+        // BSC Testnet = chainId 97 (0x61)
+        const BSC_TESTNET_CHAIN_ID = "0x61";
+        const BSC_TESTNET_CONFIG = {
+            chainId: BSC_TESTNET_CHAIN_ID,
+            chainName: "BSC Testnet",
+            nativeCurrency: {
+                name: "tBNB",
+                symbol: "tBNB",
+                decimals: 18
+            },
+            rpcUrls: ["https://data-seed-prebsc-1-s1.bnbchain.org:8545"],
+            blockExplorerUrls: ["https://testnet.bscscan.com"]
+        };
+
+        async function switchToBSCTestnet() {
+            try {
+                await window.ethereum.request({
+                    method: "wallet_switchEthereumChain",
+                    params: [{ chainId: BSC_TESTNET_CHAIN_ID }]
+                });
+            } catch (error) {
+                if (error.code === 4902) {
+                    await window.ethereum.request({
+                        method: "wallet_addEthereumChain",
+                        params: [BSC_TESTNET_CONFIG]
+                    });
+                    await window.ethereum.request({
+                        method: "wallet_switchEthereumChain",
+                        params: [{ chainId: BSC_TESTNET_CHAIN_ID }]
+                    });
+                } else {
+                    throw error;
+                }
+            }
+        }
+
         const erc20Abi = [
             "function balanceOf(address owner) view returns (uint256)",
             "function decimals() view returns (uint8)",
@@ -405,7 +441,23 @@
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+                    // NIST Token อยู่บน BSC Testnet (chainId 97)
+                    let initialProvider = new ethers.providers.Web3Provider(window.ethereum);
+                    const initialNetwork = await initialProvider.getNetwork();
+
+                    if (initialNetwork.chainId !== 97) {
+                        await switchToBSCTestnet();
+                    }
+
+                    // สร้าง provider/signer ใหม่หลังเปลี่ยน network
                     provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const network = await provider.getNetwork();
+
+                    if (network.chainId !== 97) {
+                        throw new Error("ไม่สามารถเปลี่ยนเป็น BSC Testnet ได้ (chainId ปัจจุบัน: " + network.chainId + ")");
+                    }
+
                     signer = provider.getSigner();
                     
                     const address = await signer.getAddress();
@@ -416,8 +468,7 @@
                     document.getElementById('connect-btn').classList.add('bg-white', 'text-navy', 'border', 'border-gray-200');
                     document.getElementById('connect-btn').classList.remove('bg-navy', 'text-white');
 
-                    // ตรวจว่า Contract มีอยู่บน Network ปัจจุบันก่อนเรียก balanceOf
-                    const network = await provider.getNetwork();
+                    // ตรวจว่า Contract มีอยู่บน BSC Testnet ก่อนเรียก balanceOf
                     const contractCode = await provider.getCode(NIST_CONTRACT_ADDRESS);
 
                     if (!contractCode || contractCode === "0x") {
