@@ -485,6 +485,10 @@
                     
                     const balance = await nistContract.balanceOf(address);
                     const decimals = await nistContract.decimals();
+
+                    // สร้าง/โหลดผู้ใช้ใน Backend ทันทีหลังเชื่อมกระเป๋า
+                    // เพื่อให้ /api/claim พบ wallet นี้ก่อนกดรับ 200 NIST
+                    await loadUserData(currentWallet);
                     const formattedBalance = ethers.utils.formatUnits(balance, decimals);
                     document.getElementById('nist-balance').innerText = parseFloat(formattedBalance).toFixed(0);
 
