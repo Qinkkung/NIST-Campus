@@ -193,6 +193,33 @@ func cancelBookingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // แจก 200 NIST + 5 Trust Score ให้กระเป๋าละ 1 ครั้งต่อรอบ 2 เดือน
+func treasuryStatusHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodGet {
+        http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+        return
+    }
+    derived, bnb, nist, err := getTreasuryDiagnostics()
+    if err != nil {
+        log.Printf("❌ Treasury diagnostics failed: %v", err)
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    matches := strings.EqualFold(derived, ReceiverAddress)
+    log.Printf("🔎 Treasury diagnostics | derived=%s | configured=%s | match=%t | tBNB=%s | NIST=%s",
+        derived, ReceiverAddress, matches, formatBNB(bnb), formatNIST(nist))
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "configured_receiver": ReceiverAddress,
+        "derived_treasury": derived,
+        "private_key_matches_receiver": matches,
+        "tbnb_balance": formatBNB(bnb),
+        "nist_balance": formatNIST(nist),
+        "chain_id": BSCChainID,
+    })
+}
+
 func claimNISTHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost { http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed); return }
 	var req map[string]string
@@ -339,6 +366,7 @@ func main() {
 	http.HandleFunc("/api/cancel", enableCORS(cancelBookingHandler))
 	http.HandleFunc("/api/earn", enableCORS(earnActivityHandler))
 	http.HandleFunc("/api/claim", enableCORS(claimNISTHandler))
+	http.HandleFunc("/api/treasury-status", enableCORS(treasuryStatusHandler))
 	http.HandleFunc("/api/orientation-claim", enableCORS(claimOrientationHandler))
 	http.HandleFunc("/api/transaction", enableCORS(createTransactionHandler))
 	http.HandleFunc("/api/transactions", enableCORS(getTransactionsHandler))
