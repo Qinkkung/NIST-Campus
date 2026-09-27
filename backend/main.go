@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -24,6 +26,19 @@ type Booking struct {
 	Date          string `json:"date"`
 	Time          string `json:"time"`
 	Status        string `json:"status"` // "Confirmed" หรือ "Cancelled"
+	Amount        int    `json:"amount"`
+	TxHash        string `json:"tx_hash"`
+}
+
+type Transaction struct {
+	ID            string `json:"id"`
+	WalletAddress string `json:"wallet_address"`
+	To            string `json:"to"`
+	Amount        int    `json:"amount"`
+	TxHash        string `json:"tx_hash"`
+	Type          string `json:"type"`
+	Status        string `json:"status"`
+	CreatedAt     string `json:"created_at"`
 }
 
 // ==========================================
@@ -31,6 +46,7 @@ type Booking struct {
 // ==========================================
 var users []User
 var bookings []Booking
+var transactions []Transaction
 var mutex sync.Mutex // ใช้ Mutex เพื่อป้องกันปัญหาตอนมีคนเรียก API พร้อมกัน
 
 // ==========================================
@@ -187,16 +203,90 @@ func earnActivityHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "User not found", http.StatusNotFound)
 }
 
+
+// บันทึก Transaction หลังจาก Frontend โอน NIST สำเร็จบน Blockchain
+func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var tx Transaction
+	if err := json.NewDecoder(r.Body).Decode(&tx); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if tx.WalletAddress == "" || tx.TxHash == "" {
+		http.Error(w, "wallet_address and tx_hash are required", http.StatusBadRequest)
+		return
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	tx.ID = fmt.Sprintf("TX-%d", time.Now().UnixNano())
+	tx.Status = "Confirmed"
+	tx.CreatedAt = time.Now().Format(time.RFC3339)
+
+	transactions = append(transactions, tx)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(tx)
+}
+
+// ดึงประวัติ Transaction ของกระเป๋า
+func getTransactionsHandler(w http.ResponseWriter, r *http.Request) {
+	wallet := r.URL.Query().Get("wallet")
+	if wallet == "" {
+		http.Error(w, "Missing wallet address", http.StatusBadRequest)
+		return
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	result := []Transaction{}
+	for _, tx := range transactions {
+		if tx.WalletAddress == wallet {
+			result = append(result, tx)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "ok",
+		"service": "NIST-Campus API",
+	})
+}
+
 // ==========================================
 // 5. ฟังก์ชันหลัก (Main)
 // ==========================================
 func main() {
+	http.HandleFunc("/", enableCORS(healthHandler))
 	http.HandleFunc("/api/user", enableCORS(getUserHandler))
 	http.HandleFunc("/api/bookings", enableCORS(getBookingsHandler))
 	http.HandleFunc("/api/book", enableCORS(bookRoomHandler))
 	http.HandleFunc("/api/cancel", enableCORS(cancelBookingHandler))
 	http.HandleFunc("/api/earn", enableCORS(earnActivityHandler))
+	http.HandleFunc("/api/transaction", enableCORS(createTransactionHandler))
+	http.HandleFunc("/api/transactions", enableCORS(getTransactionsHandler))
 
-	fmt.Println("🚀 Backend กำลังทำงานที่ http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	port := 8080
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		if parsed, err := strconv.Atoi(envPort); err == nil {
+			port = parsed
+		}
+	}
+
+	addr := fmt.Sprintf(":%d", port)
+	fmt.Printf("🚀 NIST-Campus Backend running on %s\n", addr)
+	log.Fatal(http.ListenAndServe(addr, nil))
 }
