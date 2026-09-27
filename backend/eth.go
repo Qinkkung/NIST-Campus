@@ -10,6 +10,7 @@ import (
     "io"
     "math/big"
     "net/http"
+    "os"
     "strings"
 )
 
@@ -170,6 +171,15 @@ func hexQuantityToBig(raw json.RawMessage)(*big.Int,error){
     var s string;if err:=json.Unmarshal(raw,&s);err!=nil{return nil,err};s=strings.TrimPrefix(s,"0x");if s==""{return big.NewInt(0),nil}
     n:=new(big.Int);if _,ok:=n.SetString(s,16);!ok{return nil,fmt.Errorf("invalid hex quantity")};return n,nil
 }
+
+func isHexAddress(s string) bool {
+    s = strings.TrimPrefix(strings.TrimSpace(s), "0x")
+    if len(s) != 40 { return false }
+    _, err := hex.DecodeString(s)
+    return err == nil
+}
+
+func getEnv(key string) string { return os.Getenv(key) }
 
 func sendNISTTransfer(toWallet string,amountNIST int64)(string,error){
     privateKeyHex:=strings.TrimSpace(getEnv("NIST_TREASURY_PRIVATE_KEY"));if privateKeyHex==""{return "",fmt.Errorf("ยังไม่ได้ตั้งค่า NIST_TREASURY_PRIVATE_KEY บน Backend")}
