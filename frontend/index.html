@@ -115,9 +115,9 @@
                         <i class="fas fa-star text-yellow-300 mr-1"></i> CAMPUS ACTIVITY
                     </span>
                     <h3 class="font-bold text-lg">ปฐมนิเทศนักศึกษา</h3>
-                    <p class="text-sm opacity-90">รับฟรี 200 NIST | +5 Trust Score</p>
+                    <p class="text-sm opacity-90">รับฟรี 20 NIST | +5 Trust Score</p>
                     <button id="orientation-claim-btn" onclick="claimOrientationScore()" class="mt-3 bg-white text-green-600 px-4 py-2 rounded-xl text-sm font-bold shadow hover:shadow-md transition-all">
-                        <i class="fas fa-gift mr-1"></i> รับ 200 NIST + 5 Trust Score
+                        <i class="fas fa-gift mr-1"></i> รับ 20 NIST + 5 Trust Score
                     </button>
                     <p id="orientation-claim-message" class="text-xs mt-2 text-white/90"></p>
                 </div>
@@ -547,7 +547,7 @@
             button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> กำลังรับคะแนน...';
 
             try {
-                const res = await fetch(`${API_URL}/claim`, {
+                const res = await fetch(`${API_URL}/orientation-claim`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ wallet_address: currentWallet })
@@ -556,7 +556,7 @@
                 const data = await res.json().catch(() => ({}));
 
                 if (res.status === 409) {
-                    button.innerHTML = '<i class="fas fa-check mr-1"></i> รับคะแนนแล้ว';
+                    button.innerHTML = '<i class="fas fa-check mr-1"></i> รับรางวัลแล้ว';
                     message.innerText = 'กระเป๋านี้รับคะแนนปฐมนิเทศไปแล้ว';
                     return;
                 }
@@ -566,7 +566,7 @@
                 }
 
                 button.innerHTML = '<i class="fas fa-check mr-1"></i> รับคะแนนแล้ว';
-                message.innerText = '🎉 รับ 200 NIST +5 Trust Score สำเร็จ';
+                message.innerText = '🎉 รับ 20 NIST +5 Trust Score สำเร็จ';
                 await loadUserData(currentWallet);
             } catch (error) {
                 button.disabled = false;
@@ -582,6 +582,10 @@
                 
                 // 1. อัปเดตการ์ด Trust Score ด้านบน
                 document.getElementById('trust-score').innerText = data.trust_score;
+                const balanceElement = document.getElementById('nist-balance');
+                if (balanceElement && typeof data.nist_balance === 'number') {
+                    balanceElement.innerText = data.nist_balance.toLocaleString();
+                }
                 
                 // 2. อัปเดตตัวเลขในวงกลมประวัติความน่าเชื่อถือด้านล่าง
                 const circleScore = document.getElementById('trust-score-circle');
@@ -591,13 +595,11 @@
 
                 const claimButton = document.getElementById('orientation-claim-btn');
                 const claimMessage = document.getElementById('orientation-claim-message');
-                const now = new Date();
-                const currentPeriod = `${now.getUTCFullYear()}-${String(Math.floor(now.getUTCMonth() / 2)).padStart(2, '0')}`;
                 if (claimButton) {
-                    if (data.last_claim_period === currentPeriod) {
+                    if (data.orientation_claimed) {
                         claimButton.disabled = true;
                         claimButton.innerHTML = '<i class="fas fa-check mr-1"></i> รับรอบนี้แล้ว';
-                        if (claimMessage) claimMessage.innerText = 'กระเป๋านี้รับ 200 NIST ในรอบ 2 เดือนนี้แล้ว';
+                        if (claimMessage) claimMessage.innerText = 'กระเป๋านี้รับรางวัลปฐมนิเทศไปแล้ว';
                     } else {
                         claimButton.disabled = false;
                         claimButton.innerHTML = '<i class="fas fa-gift mr-1"></i> รับ 200 NIST + 5 Trust Score';
