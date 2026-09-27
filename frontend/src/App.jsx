@@ -1,11 +1,48 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Wallet, ShieldCheck, Coins, BookOpen, Clock, ChevronRight } from 'lucide-react'
 
 function App() {
   const [walletAddress, setWalletAddress] = useState('')
+  const [trustScore, setTrustScore] = useState(82)
+  const [orientationClaimed, setOrientationClaimed] = useState(false)
+  const [claimingOrientation, setClaimingOrientation] = useState(false)
+  const [claimMessage, setClaimMessage] = useState('')
 
   const connectWallet = () => {
     setWalletAddress('0xEC08...58ED')
+  }
+
+  useEffect(() => {
+    if (!walletAddress) return
+    fetch('http://localhost:8080/api/user?wallet=' + encodeURIComponent(walletAddress))
+      .then(res => res.json())
+      .then(data => {
+        setTrustScore(data.trust_score)
+        setOrientationClaimed(Boolean(data.orientation_claimed))
+      })
+      .catch(() => {})
+  }, [walletAddress])
+
+  const claimOrientation = async () => {
+    if (!walletAddress || orientationClaimed || claimingOrientation) return
+    setClaimingOrientation(true)
+    setClaimMessage('')
+    try {
+      const res = await fetch('http://localhost:8080/api/orientation-claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: walletAddress }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'ไม่สามารถรับคะแนนได้')
+      setTrustScore(data.new_score)
+      setOrientationClaimed(true)
+      setClaimMessage('รับคะแนนปฐมนิเทศ +5 สำเร็จ')
+    } catch (error) {
+      setClaimMessage(error.message)
+    } finally {
+      setClaimingOrientation(false)
+    }
   }
 
   return (
@@ -65,14 +102,25 @@ function App() {
               <div>
                 <p className="text-sm font-semibold text-slate-400 mb-1">Trust Score</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-black text-slate-800 tracking-tight">82</span>
+                  <span className="text-4xl font-black text-slate-800 tracking-tight">{trustScore}</span>
                   <span className="text-lg font-medium text-slate-400">/ 100</span>
                 </div>
                 <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
-                  <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 w-[82%] h-full rounded-full"></div>
+                  <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 h-full rounded-full" style={{ width: `${trustScore}%` }}></div>
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
+            <button
+              onClick={claimOrientation}
+              disabled={!walletAddress || orientationClaimed || claimingOrientation}
+              className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors"
+            >
+              {orientationClaimed ? '✓ รับคะแนนปฐมนิเทศแล้ว' : claimingOrientation ? 'กำลังรับคะแนน...' : 'รับคะแนนปฐมนิเทศ +5'}
+            </button>
+            {claimMessage && <span className="text-sm text-slate-600">{claimMessage}</span>}
           </div>
         </section>
 
