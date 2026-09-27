@@ -115,7 +115,11 @@
                         <i class="fas fa-star text-yellow-300 mr-1"></i> CAMPUS ACTIVITY
                     </span>
                     <h3 class="font-bold text-lg">ปฐมนิเทศนักศึกษา</h3>
-                    <p class="text-sm opacity-90">เช็คอินรับ +20 NIST | +5 Trust Score</p>
+                    <p class="text-sm opacity-90">รับ +20 NIST | +5 Trust Score</p>
+                    <button id="orientation-claim-btn" onclick="claimOrientationScore()" class="mt-3 bg-white text-green-600 px-4 py-2 rounded-xl text-sm font-bold shadow hover:shadow-md transition-all">
+                        <i class="fas fa-gift mr-1"></i> รับคะแนนปฐมนิเทศ
+                    </button>
+                    <p id="orientation-claim-message" class="text-xs mt-2 text-white/90"></p>
                 </div>
                 <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-green-500 text-2xl shadow-sm relative z-10">
                     <i class="fas fa-qrcode"></i>
@@ -526,6 +530,47 @@
         // Backend API Integrations
         // ==========================================
         // โหลดคะแนน Trust Score จาก Backend
+        async function claimOrientationScore() {
+            if (!currentWallet) {
+                alert("กรุณาเชื่อมต่อกระเป๋าก่อนรับคะแนน");
+                return;
+            }
+
+            const button = document.getElementById('orientation-claim-btn');
+            const message = document.getElementById('orientation-claim-message');
+
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> กำลังรับคะแนน...';
+
+            try {
+                const res = await fetch(`${API_URL}/orientation-claim`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet_address: currentWallet })
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (res.status === 409) {
+                    button.innerHTML = '<i class="fas fa-check mr-1"></i> รับคะแนนแล้ว';
+                    message.innerText = 'กระเป๋านี้รับคะแนนปฐมนิเทศไปแล้ว';
+                    return;
+                }
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'ไม่สามารถรับคะแนนได้');
+                }
+
+                button.innerHTML = '<i class="fas fa-check mr-1"></i> รับคะแนนแล้ว';
+                message.innerText = '🎉 รับ +5 Trust Score สำเร็จ';
+                await loadUserData(currentWallet);
+            } catch (error) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-gift mr-1"></i> รับคะแนนปฐมนิเทศ';
+                message.innerText = error.message;
+            }
+        }
+
         async function loadUserData(wallet) {
             try {
                 const res = await fetch(`${API_URL}/user?wallet=${wallet}`);
