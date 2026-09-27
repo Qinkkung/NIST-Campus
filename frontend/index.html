@@ -416,6 +416,16 @@
                     document.getElementById('connect-btn').classList.add('bg-white', 'text-navy', 'border', 'border-gray-200');
                     document.getElementById('connect-btn').classList.remove('bg-navy', 'text-white');
 
+                    // ตรวจว่า Contract มีอยู่บน Network ปัจจุบันก่อนเรียก balanceOf
+                    const network = await provider.getNetwork();
+                    const contractCode = await provider.getCode(NIST_CONTRACT_ADDRESS);
+
+                    if (!contractCode || contractCode === "0x") {
+                        throw new Error(
+                            `ไม่พบ NIST Token Contract บน Network นี้ (chainId: ${network.chainId}) กรุณาเปลี่ยน MetaMask ไป Network ที่ deploy NIST Token ไว้`
+                        );
+                    }
+
                     nistContract = new ethers.Contract(NIST_CONTRACT_ADDRESS, erc20Abi, signer);
                     
                     const balance = await nistContract.balanceOf(address);
@@ -560,7 +570,28 @@
                 alert("ส่งคำสั่งโอนแล้ว กรุณารอระบบ Blockchain ประมวลผลสักครู่...");
                 document.querySelector('button[onclick="confirmBooking()"]').innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังประมวลผล...';
                 
-                await tx.wait(); 
+                const receipt = await tx.wait(); 
+
+                // บันทึก Transaction จริงลง Go Backend หลัง Blockchain ยืนยันแล้ว
+                const dateInput = document.querySelector('input[type="date"]').value || "28 ก.ย. 2026";
+                const timeInput = document.querySelector('select').value;
+
+                const txResponse = await fetch(`${API_URL}/transaction`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet_address: currentWallet,
+                        to: RECEIVER_ADDRESS,
+                        amount: 50,
+                        tx_hash: receipt.transactionHash,
+                        type: "BOOKING"
+                    })
+                });
+
+                if (!txResponse.ok) {
+                    console.warn("Transaction confirmed on-chain, but backend record failed:", await txResponse.text());
+                }
+
                 closeModal();
                 
                 // ตัดยอดเหรียญบนหน้า UI ให้เห็นทันที
@@ -570,9 +601,6 @@
                 }
                 
                 // ส่งข้อมูลไปบันทึกลง Backend
-                const dateInput = document.querySelector('input[type="date"]').value || "28 ก.ย. 2026";
-                const timeInput = document.querySelector('select').value;
-                
                 await fetch(`${API_URL}/book`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -639,19 +667,21 @@
             scanTimeout = setTimeout(async () => {
                 closeQrScanner();
                 
-                // จำลองบวก NIST บน UI (MVP)
-                const balanceElement = document.getElementById('nist-balance');
-                if (balanceElement) { balanceElement.innerText = parseInt(balanceElement.innerText.replace(/,/g, '')) + 20; }
-                
-                // เรียก API แจก Trust Score ลง Database
-                await fetch(`${API_URL}/earn`, {
+                // บันทึกกิจกรรม +5 Trust Score ที่ Backend
+                const earnResponse = await fetch(`${API_URL}/earn`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ wallet_address: currentWallet })
                 });
                 await loadUserData(currentWallet);
-                
-                alert("🎉 สแกนสำเร็จ!\nเข้าร่วมกิจกรรมปฐมนิเทศเรียบร้อย\n\nได้รับ: +20 NIST และ +5 Trust Score");
+
+                if (!earnResponse.ok) {
+                    throw new Error(await earnResponse.text());
+                }
+
+                // หมายเหตุ: ตอนนี้ QR ยังเพิ่ม Trust Score จริง แต่ยังไม่ได้ mint/โอน NIST จริง
+                // เพราะต้องมีฟังก์ชัน mint/reward ใน Smart Contract ก่อน
+                alert("🎉 สแกนสำเร็จ!\nเข้าร่วมกิจกรรมปฐมนิเทศเรียบร้อย\n\nได้รับ: +5 Trust Score\n\nNIST +20 จะต้องเชื่อมกับฟังก์ชัน Reward/Mint ของ Smart Contract ก่อน");
             }, 3000); 
         }
 
