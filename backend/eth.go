@@ -154,7 +154,6 @@ func buildTransferData(toWallet string,amount *big.Int)([]byte,error){
     data:=make([]byte,0,68);data=append(data,0xa9,0x05,0x9c,0xbb);data=append(data,make([]byte,12)...);data=append(data,addressBytes...);data=append(data,pad32(amount)...);return data,nil
 }
 
-type rpcRequest struct{JSONRPC string;ID int;Method string;Params interface{}}
 type rpcError struct{Code int;Message string}
 type rpcResponse struct{JSONRPC string;ID int;Result json.RawMessage;Error *rpcError}
 
