@@ -159,7 +159,7 @@ type rpcError struct{Code int;Message string}
 type rpcResponse struct{JSONRPC string;ID int;Result json.RawMessage;Error *rpcError}
 
 func rpcCall(method string,params interface{})(json.RawMessage,error){
-    body,err:=json.Marshal(rpcRequest{JSONRPC:"2.0",ID:1,Method:method,Params:params});if err!=nil{return nil,err}
+    body,err:=json.Marshal(map[string]interface{}{"jsonrpc":"2.0","id":1,"method":method,"params":params});if err!=nil{return nil,err}
     req,err:=http.NewRequest(http.MethodPost,bscRPCURL,bytes.NewReader(body));if err!=nil{return nil,err};req.Header.Set("Content-Type","application/json")
     resp,err:=http.DefaultClient.Do(req);if err!=nil{return nil,fmt.Errorf("BSC RPC request failed: %w",err)};defer resp.Body.Close()
     raw,err:=io.ReadAll(resp.Body);if err!=nil{return nil,err};if resp.StatusCode<200||resp.StatusCode>=300{return nil,fmt.Errorf("BSC RPC returned HTTP %d",resp.StatusCode)}
