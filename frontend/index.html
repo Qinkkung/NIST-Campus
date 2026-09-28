@@ -534,44 +534,86 @@
         // Backend API Integrations
         // ==========================================
         // โหลดคะแนน Trust Score จาก Backend
+        // กระเป๋าสำหรับแจก Reward: ใช้ MetaMask เซ็นธุรกรรมจริง ไม่เก็บ Private Key ไว้บน Backend
+        const REWARD_WALLET_ADDRESS = RECEIVER_ADDRESS;
+        const ORIENTATION_RECIPIENT_KEY = 'nist_orientation_recipient';
+
         async function claimOrientationScore() {
             if (!currentWallet) {
-                alert("กรุณาเชื่อมต่อกระเป๋าก่อนรับคะแนน");
+                alert("กรุณาเชื่อมต่อกระเป๋าก่อนรับรางวัล");
                 return;
             }
 
             const button = document.getElementById('orientation-claim-btn');
             const message = document.getElementById('orientation-claim-message');
+            const savedRecipient = localStorage.getItem(ORIENTATION_RECIPIENT_KEY);
+
+            // ขั้นที่ 1: ผู้ใช้เริ่มจาก Student Wallet เพื่อบันทึกปลายทาง
+            if (currentWallet.toLowerCase() !== REWARD_WALLET_ADDRESS.toLowerCase()) {
+                localStorage.setItem(ORIENTATION_RECIPIENT_KEY, currentWallet);
+                message.innerText = 'ขั้นต่อไป: เปลี่ยน MetaMask ไปยัง Reward Wallet แล้วกดปุ่มนี้อีกครั้ง';
+                button.innerHTML = '<i class="fas fa-wallet mr-1"></i> โอน 20 NIST จาก Reward Wallet';
+                alert(
+                    "บันทึกกระเป๋านักศึกษาแล้ว\n\n" +
+                    "กรุณาเปลี่ยน MetaMask ไปยังบัญชี Reward Wallet ที่ใช้แจก NIST\n" +
+                    "แล้วกลับมากดปุ่มนี้อีกครั้ง เพื่อยืนยันการโอน 20 NIST จริง"
+                );
+                return;
+            }
+
+            // ขั้นที่ 2: Reward Wallet เป็นผู้เซ็นโอน 20 NIST ให้ Student Wallet
+            if (!savedRecipient) {
+                alert("ยังไม่พบกระเป๋านักศึกษาปลายทาง กรุณากลับไปเชื่อมต่อ Student Wallet ก่อน");
+                return;
+            }
+
+            if (savedRecipient.toLowerCase() === REWARD_WALLET_ADDRESS.toLowerCase()) {
+                alert("กระเป๋าปลายทางต้องไม่ใช่ Reward Wallet");
+                return;
+            }
 
             button.disabled = true;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> กำลังรับคะแนน...';
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> กำลังส่ง 20 NIST...';
 
             try {
+                const amount = ethers.utils.parseUnits("20", 18);
+                const tx = await nistContract.transfer(savedRecipient, amount);
+
+                message.innerText = 'กำลังรอ Blockchain ยืนยันธุรกรรม...';
+                const receipt = await tx.wait();
+
+                // บันทึกผลหลังโอนสำเร็จเท่านั้น
                 const res = await fetch(`${API_URL}/orientation-claim`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ wallet_address: currentWallet })
+                    body: JSON.stringify({
+                        wallet_address: savedRecipient,
+                        sender_wallet: REWARD_WALLET_ADDRESS,
+                        tx_hash: receipt.transactionHash
+                    })
                 });
 
                 const data = await res.json().catch(() => ({}));
 
-                if (res.status === 409) {
-                    button.innerHTML = '<i class="fas fa-check mr-1"></i> รับรางวัลแล้ว';
-                    message.innerText = 'กระเป๋านี้รับคะแนนปฐมนิเทศไปแล้ว';
-                    return;
-                }
-
                 if (!res.ok) {
-                    throw new Error(data.error || 'ไม่สามารถรับคะแนนได้');
+                    throw new Error(data.error || 'โอนสำเร็จ แต่บันทึกคะแนนไม่สำเร็จ');
                 }
 
-                button.innerHTML = '<i class="fas fa-check mr-1"></i> รับคะแนนแล้ว';
-                message.innerText = '🎉 รับ +5 Trust Score สำเร็จ';
-                await loadUserData(currentWallet);
+                localStorage.removeItem(ORIENTATION_RECIPIENT_KEY);
+                message.innerText = `🎉 โอน 20 NIST สำเร็จ | +5 Trust Score | Tx: ${receipt.transactionHash.slice(0, 10)}...`;
+                button.innerHTML = '<i class="fas fa-check mr-1"></i> รับรางวัลแล้ว';
+
+                // กลับไป Student Wallet เพื่อให้หน้าเว็บแสดงยอด 220 NIST จริง
+                alert(
+                    "โอน 20 NIST สำเร็จบน BSC Testnet แล้ว!\n\n" +
+                    "กรุณาเปลี่ยน MetaMask กลับไป Student Wallet\n" +
+                    "เพื่อดูยอด NIST ที่เพิ่มขึ้น และตรวจสอบ Transaction ได้บน BscScan"
+                );
             } catch (error) {
+                console.error("Orientation reward transaction failed:", error);
                 button.disabled = false;
-                button.innerHTML = '<i class="fas fa-gift mr-1"></i> รับ 20 NIST + 5 Trust Score';
-                message.innerText = error.message;
+                button.innerHTML = '<i class="fas fa-wallet mr-1"></i> โอน 20 NIST จาก Reward Wallet';
+                message.innerText = error?.message || "การโอน 20 NIST ล้มเหลว";
             }
         }
 
