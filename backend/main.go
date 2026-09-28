@@ -187,20 +187,55 @@ func cancelBookingHandler(w http.ResponseWriter, r *http.Request) {
 
 // ปฐมนิเทศ: รับ 20 NIST + 5 Trust Score ได้ 1 ครั้งต่อกระเป๋า
 func claimOrientationHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost { http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed); return }
-	var req struct { WalletAddress string `json:"wallet_address"` }
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { http.Error(w, err.Error(), http.StatusBadRequest); return }
-	if !isHexAddress(req.WalletAddress) { http.Error(w, "wallet_address is invalid", http.StatusBadRequest); return }
-	mutex.Lock(); defer mutex.Unlock()
-	for i := range users {
-		if !strings.EqualFold(users[i].WalletAddress, req.WalletAddress) { continue }
-		if users[i].OrientationClaimed { http.Error(w, "Orientation reward already claimed", http.StatusConflict); return }
-		users[i].TrustScore += 5
-		users[i].OrientationClaimed = true
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"message":"Orientation reward claimed successfully", "amount":20, "new_score":users[i].TrustScore, "orientation_claimed":true})
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	var req struct {
+		WalletAddress string `json:"wallet_address"`
+		SenderWallet  string `json:"sender_wallet"`
+		TxHash       string `json:"tx_hash"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if !isHexAddress(req.WalletAddress) || !isHexAddress(req.SenderWallet) || req.TxHash == "" {
+		http.Error(w, "wallet_address, sender_wallet and tx_hash are required", http.StatusBadRequest)
+		return
+	}
+	if !strings.EqualFold(req.SenderWallet, ReceiverAddress) {
+		http.Error(w, "Invalid reward sender wallet", http.StatusForbidden)
+		return
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for i := range users {
+		if !strings.EqualFold(users[i].WalletAddress, req.WalletAddress) {
+			continue
+		}
+		if users[i].OrientationClaimed {
+			http.Error(w, "Orientation reward already claimed", http.StatusConflict)
+			return
+		}
+
+		users[i].TrustScore += 5
+		users[i].OrientationClaimed = true
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message":             "Orientation reward claimed successfully",
+			"amount":              20,
+			"new_score":           users[i].TrustScore,
+			"orientation_claimed": true,
+			"tx_hash":             req.TxHash,
+		})
+		return
+	}
+
 	http.Error(w, "User not found", http.StatusNotFound)
 }
 
